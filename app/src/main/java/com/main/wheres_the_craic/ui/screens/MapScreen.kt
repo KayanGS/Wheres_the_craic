@@ -9,6 +9,6 @@ import androidx.compose.runtime.Composable
  * check-in screen
  */
 @Composable
-fun MapScreen() {
+fun MapScreen(onPubSelected: Function<Unit>) {
 
 }
