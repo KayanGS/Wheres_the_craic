@@ -6,9 +6,7 @@ plugins {
 
 android {
     namespace = "com.main.wheres_the_craic"
-    compileSdk {
-        version = release(36)
-    }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.main.wheres_the_craic"
@@ -18,6 +16,13 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Get API key from gradle.properties
+        val mapsKey = (project.findProperty("MAPS_API_KEY") as String?) ?: ""
+
+        // Inject API key into manifest
+        manifestPlaceholders["com.google.android.geo.API_KEY"] = mapsKey
+
     }
 
     buildTypes {
@@ -50,6 +55,8 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+
+    implementation("androidx.navigation:navigation-compose:2.7.7")
     implementation("com.google.maps.android:maps-compose:4.3.3")
     implementation("com.google.android.gms:play-services-maps:19.0.0")
     implementation("com.google.android.gms:play-services-location:21.0.1")
