@@ -4,10 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.main.where_s_the_craic.ui.screens.CheckInScreen
-import com.main.where_s_the_craic.ui.screens.MapScreen
-import com.main.where_s_the_craic.ui.screens.PubDetailsScreen
-
+import com.main.wheres_the_craic.ui.screens.MapScreen
+import com.main.wheres_the_craic.ui.screens.CheckInScreen
+import com.main.wheres_the_craic.ui.screens.PubDetailsScreen
 
 object Routes {
     const val MAP_SCREEN = "map_screen"
@@ -21,7 +20,7 @@ fun AppNavigation(navController: NavHostController) {
     NavHost(navController = navController, startDestination = Routes.MAP_SCREEN) {
         composable(Routes.MAP_SCREEN) {
             MapScreen(
-                onPubSelected = { pubId: String ->
+                onPubSelected = { pubId: String? ->
                     navController.navigate("${Routes.PUB_DETAILS_SCREEN}/$pubId")
                 }
             )
