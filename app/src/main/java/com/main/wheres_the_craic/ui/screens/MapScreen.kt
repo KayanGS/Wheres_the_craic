@@ -1,4 +1,4 @@
-package com.main.where_s_the_craic.ui.screens
+package com.main.wheres_the_craic.ui.screens
 
 import androidx.compose.runtime.Composable
 
@@ -10,5 +10,6 @@ import androidx.compose.runtime.Composable
  */
 @Composable
 fun MapScreen(onPubSelected: Function<Unit>) {
+
 
 }
