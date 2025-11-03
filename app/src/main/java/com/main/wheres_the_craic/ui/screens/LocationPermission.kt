@@ -1,44 +1,49 @@
 package com.main.wheres_the_craic.ui.screens
 
+import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 
 @Composable
-fun RequestLocationPermission(onPermissionGranted: @Composable () -> Unit) {
+fun RequestLocationPermission(
+    onPermissionGranted: () -> Unit,
+    onPermissionDenied: () -> Unit
+) {
 
     val context = LocalContext.current
-    var permissionGranted by remember { mutableStateOf(false) }
 
+    // Helper function to check location permission
+    fun hasLocationPermission(): Boolean {
+        val fine = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED // Check for fine location permission
+        val coarse = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED // Check for coarse location permission
+        return fine || coarse // Return true if either permission is granted
+    }
+    // Creates a launcher
     val launcher =
-        rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.RequestPermission()
-        ) { isGranted ->
-            permissionGranted = isGranted
-            if (isGranted) onPermissionGranted()
-
+        rememberLauncherForActivityResult( // Launches a permission request
+            contract = ActivityResultContracts.RequestPermission() // Request permission
+        ) { isGranted -> // Callback with the request result
+            if (isGranted || hasLocationPermission()) { // If permission is granted
+                onPermissionGranted() // Call the callback function with onPermissionGranted
+            } else { // If permission is denied
+                onPermissionDenied() // Call the callback function with onPermissionDenied
+            }
         }
 
     LaunchedEffect(Unit) {
-
-        val permissionCheck = ContextCompat.checkSelfPermission(
-            context,
-            android.Manifest.permission.ACCESS_FINE_LOCATION
-        )
-
-        if (permissionCheck == PackageManager.PERMISSION_GRANTED) {
-            permissionGranted = true
+        if (hasLocationPermission()) {
             onPermissionGranted()
         } else {
-            launcher.launch(android.Manifest.permission.ACCESS_FINE_LOCATION)
+            launcher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         }
     }
 }

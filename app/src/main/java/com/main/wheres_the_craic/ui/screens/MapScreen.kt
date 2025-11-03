@@ -11,13 +11,19 @@ import androidx.core.content.ContextCompat
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.LatLng
 import android.Manifest
+import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.rememberCameraPositionState
 
 
@@ -27,65 +33,71 @@ import com.google.maps.android.compose.rememberCameraPositionState
  * check-in screen
  */
 @Composable
+@SuppressLint("MissingPermission")
 fun MapScreen(onPubSelected: (String) -> Unit = {}) {
+    val context = LocalContext.current
 
-//    // Temporary for testing
-//    var message by remember { mutableStateOf("Waiting for permission...") }
-//    // Call permission composable
-//    RequestLocationPermission {
-//        message = "Permission granted!"
-//    }
-//    Surface {
-//        Text(text = message)
-//    }
-    val context = LocalContext.current // Get the current context
-    // Variable to hold user position
-    var userPosition by remember { mutableStateOf(LatLng(53.3498, -6.2603)) }
-    var locationLoaded by remember { mutableStateOf(false) } // Check if location was loaded
+    // Variables
+    var hasPermission by remember { mutableStateOf(false) }
+    var userPosition by remember { mutableStateOf(LatLng(53.3498, -6.2603)) } // Dublin default
+    var locationLoaded by remember { mutableStateOf(false) }
 
-    // Call location permission composable
-    RequestLocationPermission {
+    // Ask for permission and handle if permission is granted or denied
+    RequestLocationPermission(
+        onPermissionGranted = { hasPermission = true },
+        onPermissionDenied = { hasPermission = false }
+    )
 
-        if (
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED ||
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
+    // After permission, fetch last location, temporarily Dublin
+    LaunchedEffect(hasPermission) {
+        // If permission is not granted it should do nothing
+        if (!hasPermission) return@LaunchedEffect
 
-            // Call fused location provider
-            val fusedLocation = LocationServices.getFusedLocationProviderClient(context)
-            // Get last location and set it to userPosition
-            fusedLocation.lastLocation.addOnSuccessListener { location ->
-                if (location != null) {
-                    userPosition = LatLng(location.latitude, location.longitude)
+        // Fetch last location
+        val fused = LocationServices.getFusedLocationProviderClient(context) // get location client
+        fused.lastLocation // get last location
+            .addOnSuccessListener { loc -> // if success
+                if (loc != null) { // if location is not null
+                    userPosition = LatLng(loc.latitude, loc.longitude) // update user position
                 }
-                locationLoaded = true // Set locationLoaded to true to
-            }.addOnFailureListener {
-                locationLoaded = false
+                locationLoaded = true // update location loaded
             }
-
-            val cameraPositionState = rememberCameraPositionState {
-                position = CameraPosition.fromLatLngZoom(userPosition, 14f)
-
+            .addOnFailureListener {
+                // fall back to default; still let UI proceed
+                locationLoaded = true
             }
+    }
 
-            if (!locationLoaded) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            } else {
-                GoogleMap(
-                    modifier = Modifier.fillMaxSize(),
-                    cameraPositionState = cameraPositionState
-                )
+    // Create the camera position state, with a default position
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(userPosition, 14f)
+    }
+
+    // Will render UI based on the current state
+    when {
+        !hasPermission -> { // If permission is not granted, show a message
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(text = "Please grant location permission")
             }
         }
 
+        !locationLoaded -> { // If location is not loaded, show a loading indicator
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
 
+        else -> { // Else, shows the map
+            GoogleMap(
+                modifier = Modifier.fillMaxSize(),
+                cameraPositionState = cameraPositionState,
+                properties = MapProperties(isMyLocationEnabled = true),
+                uiSettings = MapUiSettings(
+                    myLocationButtonEnabled = true,
+                    zoomControlsEnabled = true
+                )
+            ) {
+            }
+        }
     }
 }
