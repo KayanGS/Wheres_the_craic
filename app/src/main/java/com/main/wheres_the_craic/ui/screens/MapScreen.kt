@@ -1,16 +1,14 @@
+// Filepath: com/main/wheres_the_craic/ui/screens/MapScreen.kt
 package com.main.wheres_the_craic.ui.screens
 
-import android.content.pm.PackageManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.ContextCompat
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.LatLng
-import android.Manifest
 import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,7 +17,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
@@ -43,10 +40,11 @@ fun MapScreen(onPubSelected: (String) -> Unit = {}) {
     var locationLoaded by remember { mutableStateOf(false) }
 
     // Ask for permission and handle if permission is granted or denied
-    RequestLocationPermission(
+    LocationPermission(
         onPermissionGranted = { hasPermission = true },
         onPermissionDenied = { hasPermission = false }
     )
+
 
     // After permission, fetch last location, temporarily Dublin
     LaunchedEffect(hasPermission) {
