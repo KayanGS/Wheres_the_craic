@@ -1,3 +1,4 @@
+// Filepath: com/main/wheres_the_craic/ui/screens/LocationPermission.kt
 package com.main.wheres_the_craic.ui.screens
 
 import android.Manifest
@@ -10,7 +11,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 
 @Composable
-fun RequestLocationPermission(
+fun LocationPermission(
     onPermissionGranted: () -> Unit,
     onPermissionDenied: () -> Unit
 ) {
