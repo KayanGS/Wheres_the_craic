@@ -11,16 +11,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 
+/**
+ * Display a placeholder image
+ */
 @Composable
 fun ImagePlaceHolder() {
     Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(16f / 9f)
+        color = MaterialTheme.colorScheme.surfaceVariant, // Use a variant color
+        modifier = Modifier // Apply modifiers
+            .fillMaxWidth() // Fill the width of the parent
+            .aspectRatio(16f / 9f) // Maintain aspect ratio
     ) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Image Placeholder")
+            Text("Image Placeholder") // Display text
         }
     }
 }
