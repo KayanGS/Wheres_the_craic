@@ -3,11 +3,19 @@ package com.main.wheres_the_craic.ui.screens
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -24,59 +32,84 @@ import com.main.wheres_the_craic.data.FakePubs
 import com.main.wheres_the_craic.ui.components.ImagePlaceHolder
 import com.main.wheres_the_craic.ui.components.PubDetailsBlock
 import com.main.wheres_the_craic.ui.components.TagsSelector
-import com.main.wheres_the_craic.ui.components.TAGS
+import com.main.wheres_the_craic.ui.components.TAGS_BY_CATEGORY
 
+/**
+ * A screen that displays the details of the pubs and also allows the user to check-in in the pub
+ * After checking in the user can select the current pub "vibes" and extra tags, for sharing with
+ *  other users
+ *
+ * @param pubId The unique identifier for the pub
+ * @param onBack Callback function that will bring user to the previous screen
+ */
 @Composable
-fun CheckInScreen(pubId: String?) {
-    val pub = FakePubs.getById(pubId)
+fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
+
+    val pub = FakePubs.getById(pubId) // Retrieve pub details based on the pubID
+    // State variable to check if user checked in or not, to show determined UI options
     var checkedIn by remember { mutableStateOf(false) }
-
-
+    // If the pub is not found, display a message
     if (pub == null) {
         Surface(Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Pub not found")
             }
         }
-        return
+        return // Early return to prevent the rest of the code from executing in case pub is null
     }
 
-    Scaffold(
-        floatingActionButton = {
+    Scaffold( // Main scaffold for the screen
+        bottomBar = { // Full-width Check-in button
             if (!checkedIn) {
-                FloatingActionButton(
-                    onClick = { checkedIn = true }
+                // Button
+                Button(
+                    onClick = { checkedIn = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
                 ) {
                     Text("Check-in")
                 }
             }
         }
-    ) { inner ->
-        Column(
+    ) { inner -> // Content of the screen
+        Column( // Column to organize the content
             modifier = Modifier
-                .padding(inner)
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(inner) // Padding inside the screen
+                .fillMaxSize() // Fill the available space
+                .verticalScroll(rememberScrollState()) // Allow scrolling
+                .padding(16.dp), // Padding inside the column
+            verticalArrangement = Arrangement.spacedBy(16.dp) // Spacing between items
         ) {
-            ImagePlaceHolder()
-            PubDetailsBlock(pub)
+            Row(verticalAlignment = Alignment.CenterVertically) { // Row for the back button
+                IconButton(onClick = onBack) { // Back button
+                    Icon( // Icon for the back button
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack, // Icon image
+                        contentDescription = "Back" // Button description
+                    )
+                }
+                // Text for the back button
+                Text("Back", style = MaterialTheme.typography.bodyMedium)
+            }
 
+            ImagePlaceHolder() // Placeholder for the image
+            PubDetailsBlock(pub) // Details block for the pub
+
+            // State to store selected tags
             var selectedTags by remember { mutableStateOf<Set<String>>(emptySet()) }
 
-            if (checkedIn) {
+            if (checkedIn) { // If the user is checked in, show the check-in options
                 Spacer(modifier = Modifier.height(4.dp)) // Spacing between items
-                Text("Select the vibes", style = MaterialTheme.typography.titleMedium)
+                // Text for the check-in options
+                Text("Check-in options", style = MaterialTheme.typography.titleMedium)
 
-                TagsSelector(
-                    allTags = TAGS,
-                    selected = selectedTags,
-                    onToggle = { tag ->
-                        selectedTags = if (tag in selectedTags) {
-                            selectedTags - tag
-                        } else {
-                            selectedTags + tag
-                        }
+                TagsSelector( // Tags selector for extra tags
+                    categories = TAGS_BY_CATEGORY, // All available tags
+                    selected = selectedTags, // Selected tags
+                    onToggle = { tag ->// Callback when a tag is toggled
+                        // If the tag is already selected, remove it; otherwise, add it
+                        selectedTags =
+                            if (tag in selectedTags) selectedTags - tag else selectedTags + tag
                     }
                 )
             }
