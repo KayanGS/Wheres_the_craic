@@ -49,7 +49,7 @@ fun PubsListScreen(onCheckInClick: (String) -> Unit) {
                     )
 
                     Spacer(modifier = Modifier.height(4.dp)) // Spacing between items
-                    // Changes what will be displayed based on if the pub is open or not
+
                     val isOpenText = if (pub.isPubOpenNow) "Open now" else "Closed"
                     // Makes pub distance a string to display
                     val pubDistance = pub.pubDistanceKM.toString() + "km" //
@@ -61,12 +61,8 @@ fun PubsListScreen(onCheckInClick: (String) -> Unit) {
                                 "• Craic: ${pub.pubCrowdLevel}/4 ",
                         style = MaterialTheme.typography.bodySmall
                     )
-
-
                 }
-
             }
         }
     }
-
 }
