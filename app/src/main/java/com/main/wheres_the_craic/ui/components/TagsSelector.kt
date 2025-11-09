@@ -10,25 +10,33 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
+/**
+ * Displays the tags.
+ *
+ * @param allTags The list of all possible tags.
+ * @param selected The current selected tags.
+ * @param onToggle Callback function when clicked will change the state of a tag
+ */
 @Composable
 fun TagsSelector(
     allTags: List<String>,
     selected: Set<String>,
     onToggle: (String) -> Unit
 ) {
-    // Simple fixed columns layout: 3 chips per row (keeps it dependency-free)
-    val perRow = 3
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        allTags.chunked(perRow).forEach { chunk ->
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
+    // Shows 3 chips per row
+    val chipsPerRow = 3
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { // Spacing between rows
+        allTags.chunked(chipsPerRow).forEach { chunk -> // Split the tags into rows
+            Row( // Row for each chunk
+                horizontalArrangement = Arrangement.spacedBy(8.dp), // Spacing between chips
+                modifier = Modifier.fillMaxWidth() // Fill the width
             ) {
-                chunk.forEach { tag ->
-                    FilterChip(
-                        selected = tag in selected,
-                        onClick = { onToggle(tag) },
-                        label = { Text(tag) }
+                chunk.forEach { tag -> // For each tag in the chunk
+                    FilterChip( // Chip for each tag
+                        selected = tag in selected, // Check if the tag is selected
+                        onClick = { onToggle(tag) }, // Callback when clicked
+                        label = { Text(tag) } // Display the tag
                     )
                 }
             }
