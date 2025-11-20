@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
+val mapsKey = project.findProperty("MAPS_API_KEY") as String
 
 android {
     namespace = "com.main.wheres_the_craic"
@@ -22,6 +23,8 @@ android {
 
         // Inject API key into manifest
         manifestPlaceholders["com.google.android.geo.API_KEY"] = mapsKey
+
+        resValue("string", "google_maps_key", mapsKey)
 
     }
 
@@ -60,7 +63,9 @@ dependencies {
     implementation("com.google.maps.android:maps-compose:4.3.3")
     implementation("com.google.android.gms:play-services-maps:19.0.0")
     implementation("com.google.android.gms:play-services-location:21.0.1")
+    implementation("com.google.android.libraries.places:places:3.5.0")
     implementation(libs.androidx.compose.runtime)
+//    implementation(libs.places)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

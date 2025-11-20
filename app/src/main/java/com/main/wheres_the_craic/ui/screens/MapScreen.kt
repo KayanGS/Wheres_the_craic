@@ -18,10 +18,15 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.libraries.places.api.Places
+import com.google.android.libraries.places.api.model.Place
+import com.google.android.libraries.places.api.net.FindCurrentPlaceRequest
+import com.google.android.libraries.places.api.net.PlacesClient
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.rememberCameraPositionState
+import com.main.wheres_the_craic.R
 
 
 /**
@@ -38,6 +43,7 @@ fun MapScreen(onPubSelected: (String) -> Unit = {}) {
     var hasPermission by remember { mutableStateOf(false) }
     var userPosition by remember { mutableStateOf(LatLng(53.3498, -6.2603)) } // Dublin default
     var locationLoaded by remember { mutableStateOf(false) }
+    var pubs by remember { mutableStateOf<List<Place>>(emptyList()) }
 
     // Ask for permission and handle if permission is granted or denied
     LocationPermission(
@@ -51,6 +57,31 @@ fun MapScreen(onPubSelected: (String) -> Unit = {}) {
         // If permission is not granted it should do nothing
         if (!hasPermission) return@LaunchedEffect
 
+        if (!Places.isInitialized()) {
+            Places.initialize(
+                context.applicationContext,
+                context.getString(R.string.google_maps_key)
+            )
+        }
+        // Initialize the Places client
+        val placesClient: PlacesClient = Places.createClient(context)
+
+        val placesFields = listOf(
+            Place.Field.ID,
+            Place.Field.NAME,
+            Place.Field.LAT_LNG,
+            Place.Field.TYPES,
+            Place.Field.ADDRESS
+        )
+
+        // Create a FindCurrentPlaceRequest to fetch the current place
+        val request = FindCurrentPlaceRequest.newInstance(placesFields)
+
+        placesClient.findCurrentPlace(request).addOnSuccessListener { response ->
+            //TO-DO
+        }
+
+
         // Fetch last location
         val fused = LocationServices.getFusedLocationProviderClient(context) // get location client
         fused.lastLocation // get last location
@@ -59,6 +90,7 @@ fun MapScreen(onPubSelected: (String) -> Unit = {}) {
                     userPosition = LatLng(loc.latitude, loc.longitude) // update user position
                 }
                 locationLoaded = true // update location loaded
+
             }
             .addOnFailureListener {
                 // fall back to default; still let UI proceed
