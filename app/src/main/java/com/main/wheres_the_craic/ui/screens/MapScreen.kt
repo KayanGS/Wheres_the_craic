@@ -66,25 +66,25 @@ fun MapScreen(onPubSelected: (String) -> Unit = {}) {
         }
 
         // Fetch last location
-        val fused = LocationServices.getFusedLocationProviderClient(context) // get location client
-        fused.lastLocation // get last location
-            .addOnSuccessListener { loc -> // if success
-                if (loc != null) { // if location is not null
-                    userPosition = LatLng(loc.latitude, loc.longitude) // update user position
+        val fused = LocationServices.getFusedLocationProviderClient(context) // Get location client
+        fused.lastLocation // Get last location
+            .addOnSuccessListener { loc -> // If success
+                if (loc != null) { // If location is not null
+                    userPosition = LatLng(loc.latitude, loc.longitude) // Update user position
                 }
-                locationLoaded = true // update location loaded
+                locationLoaded = true // Update location loaded
 
             }
             .addOnFailureListener {
-                // fall back to default; still let UI proceed
+                // Fall back to default; still let UI proceed
                 locationLoaded = true
             }
     }
 
     LaunchedEffect(locationLoaded) {
-        if (!locationLoaded) return@LaunchedEffect // if location not loaded, do nothing
+        if (!locationLoaded) return@LaunchedEffect // If location not loaded, do nothing
 
-        val searchRadius = 95000 // 5km
+        val searchRadius = 5000 // 5km
 
         try {
             // Create a coroutine to fetch nearby pubs
@@ -99,6 +99,7 @@ fun MapScreen(onPubSelected: (String) -> Unit = {}) {
                     searchRadius
                 )
             }
+            println("DEBUG pubs count: ${nearbyPubsResults.size}")
             nearbyPubs = nearbyPubsResults
         } catch (e: Exception) {
             nearbyPubs = emptyList()
@@ -107,6 +108,10 @@ fun MapScreen(onPubSelected: (String) -> Unit = {}) {
     // Create the camera position state, with a default position
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(userPosition, 14f)
+    }
+    // Update the camera position when the user position changes
+    LaunchedEffect(userPosition) {
+        cameraPositionState.position = CameraPosition.fromLatLngZoom(userPosition, 14f)
     }
 
     // Will render UI based on the current state
@@ -143,10 +148,11 @@ fun MapScreen(onPubSelected: (String) -> Unit = {}) {
                         ),
                         title = place.pubName,
                         onClick = {
-                            onPubSelected(place.pubId ?: "")
-                            true
+                            false
                         }
                     )
+
+
 
                 }
             }

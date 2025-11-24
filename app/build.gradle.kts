@@ -66,6 +66,7 @@ dependencies {
     implementation("com.google.android.gms:play-services-location:21.0.1")
     implementation("com.google.android.libraries.places:places:3.5.0")
     implementation("com.squareup.okhttp3:okhttp:4.11.0")
+    implementation("io.coil-kt:coil-compose:2.6.0")
     implementation(libs.androidx.compose.runtime)
 //    implementation(libs.places)
 
