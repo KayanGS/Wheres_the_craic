@@ -26,6 +26,7 @@ android {
 
         resValue("string", "google_maps_key", mapsKey)
 
+
     }
 
     buildTypes {
@@ -64,6 +65,7 @@ dependencies {
     implementation("com.google.android.gms:play-services-maps:19.0.0")
     implementation("com.google.android.gms:play-services-location:21.0.1")
     implementation("com.google.android.libraries.places:places:3.5.0")
+    implementation("com.squareup.okhttp3:okhttp:4.11.0")
     implementation(libs.androidx.compose.runtime)
 //    implementation(libs.places)
 
