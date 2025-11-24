@@ -16,7 +16,10 @@ data class PlaceResult(
     val pubId: String?,
     val pubName: String,
     val pubLatitude: Double,
-    val pubLongitude: Double
+    val pubLongitude: Double,
+    val rating: Double?,
+    val isOpenNow: Boolean?,
+    val photoReference: String?
 )
 
 suspend fun fetchNearbyPubs(
@@ -28,8 +31,8 @@ suspend fun fetchNearbyPubs(
     // Create the url for the request with the parameters
     val url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json" +
             "?location=$PubLatitude,$PubLongitude" +
-            "&radius=$radiusMeters" +
-            "&type=bar|bar_and_grill|pub|irish_pub" +
+            "&rankby=distance" +
+            "&keyword=pub%20bar%20club%20cocktail%20beer%20nightclub" +
             "&key=$apiKey"
 
     val client = OkHttpClient() // Create the client instance
@@ -56,8 +59,33 @@ suspend fun fetchNearbyPubs(
             val pubLocation = pubObject.getJSONObject("geometry").getJSONObject("location")
             val pubLatitude = pubLocation.getDouble("lat") // Get the latitude
             val pubLongitude = pubLocation.getDouble("lng") // Get the longitude
+            // Get the rating or set it to null if it is null
+            val rating = if (pubObject.has("rating")) {
+                pubObject.getDouble("rating")
+            } else {
+                null
+            }
+            // Get if the pub is open or not
+            val isOpenNow = pubObject
+                .optJSONObject("opening_hours")
+                ?.optBoolean("open_now")
+            // Get the pub photo
+            val photoReference = pubObject
+                .optJSONArray("photos")
+                ?.optJSONObject(0)
+                ?.optString("photo_reference")
             // Add the pub to the list
-            pubs.add(PlaceResult(pubId, pubName, pubLatitude, pubLongitude))
+            pubs.add(
+                PlaceResult(
+                    pubId = pubId,
+                    pubName = pubName,
+                    pubLatitude = pubLatitude,
+                    pubLongitude = pubLongitude,
+                    rating = rating,
+                    isOpenNow = isOpenNow,
+                    photoReference = photoReference
+                )
+            )
         }
         return pubs // Return the list of pubs
     }

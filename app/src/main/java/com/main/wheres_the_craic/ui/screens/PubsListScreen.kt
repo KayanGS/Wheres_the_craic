@@ -1,5 +1,7 @@
 package com.main.wheres_the_craic.ui.screens
 
+import android.annotation.SuppressLint
+import android.location.Location
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,54 +17,195 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.main.wheres_the_craic.data.FakePubs
+import coil.compose.AsyncImage
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.libraries.places.api.Places
+import com.main.wheres_the_craic.data.PlaceResult
+import com.google.android.gms.location.LocationServices
+import com.main.wheres_the_craic.data.fetchNearbyPubs
+import com.main.wheres_the_craic.R
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
+@SuppressLint("MissingPermission")
 fun PubsListScreen(onCheckInClick: (String) -> Unit) {
 
-    val pubs = FakePubs.getAll() // Return all the pubs in the list
+    val context = LocalContext.current
 
-    LazyColumn( // Lazy column to display the list of pubs
-        modifier = Modifier.fillMaxSize(), // Fill the max size of the screen
-        contentPadding = PaddingValues(12.dp), // Padding around the list
-        verticalArrangement = Arrangement.spacedBy(12.dp) // Spacing between the items
-    ) {
-        items(pubs) { pub -> // Iterate through the list of pubs
-            Card( // For each pub create a card to display the pub
-                modifier = Modifier // Modifier of the card
-                    .fillMaxWidth() // Fill the max width of the screen
-                    // When clicked, navigate to the check-in screen, passing the pub Id as parameter
-                    .clickable { onCheckInClick(pub.pubId) }
+    // Variables
+    var hasPermission by remember { mutableStateOf(false) }
+    var userPosition by remember { mutableStateOf(LatLng(53.3498, -6.2603)) } // Dublin default
+    var locationLoaded by remember { mutableStateOf(false) }
+    var nearbyPubs by remember { mutableStateOf<List<PlaceResult>>(emptyList()) }
+
+    // Ask for permission and handle if permission is granted or denied
+    LocationPermission(
+        onPermissionGranted = { hasPermission = true },
+        onPermissionDenied = { hasPermission = false }
+    )
+
+    // After permission, fetch last location, temporarily Dublin
+    LaunchedEffect(hasPermission) {
+        // If permission is not granted it should do nothing
+        if (!hasPermission) return@LaunchedEffect
+
+        if (!Places.isInitialized()) {
+            Places.initialize(
+                context.applicationContext,
+                context.getString(R.string.google_maps_key)
+            )
+        }
+
+        // Fetch last location
+        val fused = LocationServices.getFusedLocationProviderClient(context) // Get location client
+        fused.lastLocation // Get last location
+            .addOnSuccessListener { loc -> // If success
+                if (loc != null) { // If location is not null
+                    userPosition = LatLng(loc.latitude, loc.longitude) // Update user position
+                }
+                locationLoaded = true // Update location loaded
+
+            }
+            .addOnFailureListener {
+                // Fall back to default; still let UI proceed
+                locationLoaded = true
+            }
+    }
+
+    // Fetch nearby pubs once location is ready
+    LaunchedEffect(locationLoaded) {
+        if (!locationLoaded) return@LaunchedEffect // If location not loaded, do nothing
+
+        val searchRadius = 5000 // 5km
+
+        try {
+            // Create a coroutine to fetch nearby pubs
+            val nearbyPubsResults = withContext(Dispatchers.IO) {
+                val apiKey = context.getString(R.string.google_maps_key) // Get api key
+
+                // Fetch nearby pubs
+                fetchNearbyPubs(
+                    userPosition.latitude,
+                    userPosition.longitude,
+                    apiKey,
+                    searchRadius
+                )
+            }
+            println("DEBUG pubs count: ${nearbyPubsResults.size}")
+            nearbyPubs = nearbyPubsResults
+        } catch (e: Exception) {
+            nearbyPubs = emptyList()
+        }
+    }
+    // Display UI based on the current state
+    when {
+        // If permission is not granted, show a message
+        !hasPermission -> {
+            Text(
+                text = "Please grant location permission to see nearby pubs",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+            )
+        }
+
+        // If location is not loaded, show a message
+        !locationLoaded -> {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.Center
             ) {
-                Column(Modifier.padding(16.dp)) { // Create a column to display pub information
-                    // Display the pub Name
-                    Text(pub.pubName, style = MaterialTheme.typography.titleMedium)
-                    Spacer(modifier = Modifier.height(4.dp)) // Spacing between items
-                    Text( //Display pub Address and City
-                        text = "${pub.pubAddress}, ${pub.pubCity}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1, // Max number of lines to display
-                        overflow = TextOverflow.Ellipsis // If the text overflow, show ellipsis
+                Text(text = "Finding your location...")
+            }
+        }
+
+        else -> {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Iterate through nearby pubs
+                items(nearbyPubs) { pub ->
+                    // Distance between user and pub
+                    val distanceKm = distanceInKm(
+                        userPosition,
+                        LatLng(pub.pubLatitude, pub.pubLongitude)
                     )
+                    // Check if pub is open or closed
+                    val isOpenText = when (pub.isOpenNow) {
+                        true -> "Open now"
+                        false -> "Closed"
+                        null -> ""
+                    }
+                    //Pub rating
+                    val ratingText = pub.rating?.let { "%.1f".format(it) } ?: "-"
+                    // Build photo URL from photo_reference, if available
+                    val photoUrl = pub.photoReference?.let { ref ->
+                        "https://maps.googleapis.com/maps/api/place/photo" +
+                                "?maxwidth=400" +
+                                "&photo_reference=$ref" +
+                                "&key=${context.getString(R.string.google_maps_key)}"
+                    }
+                    Card( // Create a card for each pub
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onCheckInClick(pub.pubId ?: "") }
+                    ) {
+                        Column(Modifier.padding(16.dp)) {
+                            // Pub photo
+                            if (photoUrl != null) {
+                                AsyncImage(
+                                    model = photoUrl,
+                                    contentDescription = "Pub photo",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(160.dp)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
 
-                    Spacer(modifier = Modifier.height(4.dp)) // Spacing between items
+                            // Name from Google Places
+                            Text(
+                                pub.pubName,
+                                style = MaterialTheme.typography.titleMedium
+                            )
 
-                    val isOpenText = if (pub.isPubOpenNow) "Open now" else "Closed"
-                    // Makes pub distance a string to display
-                    val pubDistance = pub.pubDistanceKM.toString() + "km" //
+                            Spacer(modifier = Modifier.height(4.dp))
 
-                    Text(
-                        text = "${pub.pubRatting} " +
-                                "• $pubDistance " +
-                                "• $isOpenText " +
-                                "• Craic: ${pub.pubCrowdLevel}/4 ",
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                            //Rating - distance - and status
+                            Text(
+                                text = "⭐ $ratingText • ${"%.1f".format(distanceKm)} km • $isOpenText",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
                 }
             }
         }
     }
+}
+
+private fun distanceInKm(from: LatLng, to: LatLng): Double {
+    val results = FloatArray(1)
+    Location.distanceBetween(
+        from.latitude, from.longitude,
+        to.latitude, to.longitude,
+        results
+    )
+    return results[0] / 1000.0
 }
