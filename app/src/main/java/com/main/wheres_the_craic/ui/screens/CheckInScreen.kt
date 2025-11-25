@@ -1,3 +1,4 @@
+// Filepath: com/main/wheres_the_craic/ui/screens/CheckInScreen.kt
 package com.main.wheres_the_craic.ui.screens
 
 import androidx.compose.foundation.clickable
@@ -35,6 +36,7 @@ import coil.compose.AsyncImage
 import com.main.wheres_the_craic.data.PubDetails
 import com.main.wheres_the_craic.R
 import com.main.wheres_the_craic.data.fetchPubDetails
+import com.main.wheres_the_craic.data.savePubCheckInTags
 import com.main.wheres_the_craic.ui.components.ImagePlaceHolder
 import com.main.wheres_the_craic.ui.components.TagsSelector
 import com.main.wheres_the_craic.ui.components.TAGS_BY_CATEGORY
@@ -62,7 +64,21 @@ fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
     var checkedIn by remember { mutableStateOf(false) } // State for the user check-in status
     // State for the current photo index
     var currentPhotoIndex by remember { mutableStateOf(0) }
+    // State for the selected tags
+    var selectedTags by remember { mutableStateOf<Set<String>>(emptySet()) }
 
+    // Save the tags when the user checks in
+    LaunchedEffect(selectedTags, checkedIn) { // Launch the effect
+        val id = pubId // Get the pub ID
+        if (checkedIn && id != null) { // If the user is checked in and the pub ID is not null
+            try { // Try to save the tags
+                savePubCheckInTags(id, selectedTags) // Save the tags
+            } catch (e: Exception) {
+                // If there is an error, show the error message
+                errorMessage = "Failed to save tags"
+            }
+        }
+    }
 
     // Load details when pubId changes
     LaunchedEffect(pubId) {
@@ -262,9 +278,6 @@ fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
                 // Display Google Maps URL text
                 Text("Google Maps: $it", style = MaterialTheme.typography.bodySmall)
             }
-
-            // State to store selected tags
-            var selectedTags by remember { mutableStateOf<Set<String>>(emptySet()) }
 
             if (checkedIn) { // If the user is checked in, show the check-in options
                 Spacer(modifier = Modifier.height(4.dp)) // Spacing between items
