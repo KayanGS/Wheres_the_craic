@@ -1,6 +1,7 @@
 // Filepath: com/main/wheres_the_craic/ui/screens/CheckInScreen.kt
 package com.main.wheres_the_craic.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,26 +23,26 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-<<<<<<< Updated upstream
-import com.main.wheres_the_craic.data.FakePubs
-=======
 import coil.compose.AsyncImage
 import com.main.wheres_the_craic.data.PubDetails
 import com.main.wheres_the_craic.R
 import com.main.wheres_the_craic.data.fetchPubDetails
 import com.main.wheres_the_craic.data.savePubCheckInTags
->>>>>>> Stashed changes
 import com.main.wheres_the_craic.ui.components.ImagePlaceHolder
-import com.main.wheres_the_craic.ui.components.PubDetailsBlock
 import com.main.wheres_the_craic.ui.components.TagsSelector
 import com.main.wheres_the_craic.ui.components.TAGS_BY_CATEGORY
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
 
 /**
  * A screen that displays the details of the pubs and also allows the user to check-in in the pub
@@ -54,16 +55,6 @@ import com.main.wheres_the_craic.ui.components.TAGS_BY_CATEGORY
 @Composable
 fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
 
-<<<<<<< Updated upstream
-    val pub = FakePubs.getById(pubId) // Retrieve pub details based on the pubID
-    // State variable to check if user checked in or not, to show determined UI options
-    var checkedIn by remember { mutableStateOf(false) }
-    // If the pub is not found, display a message
-    if (pub == null) {
-        Surface(Modifier.fillMaxSize()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Pub not found")
-=======
     val context = LocalContext.current // Get the current context
     // State for the pub details
     var pubDetails by remember { mutableStateOf<PubDetails?>(null) }
@@ -101,23 +92,51 @@ fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
             val apiKey = context.getString(R.string.google_maps_key) // Get the API key
             val details = withContext(Dispatchers.IO) { // Fetch the details in a coroutine
                 fetchPubDetails(pubId, apiKey) // Fetch the details
->>>>>>> Stashed changes
             }
+            if (details == null) { // If details are null, show error message
+                errorMessage = "Pub not found" // Error Message
+            } else { // Else, set the details
+                pubDetails = details // Set the details
+            }
+        } catch (e: Exception) { // If there is an error, show error message
+            errorMessage = "Failed to load pub details" // Error Message
+        } finally { // Finally, stop loading
+            isLoading = false // Stop Loading
         }
-        return // Early return to prevent the rest of the code from executing in case pub is null
     }
 
+    if (isLoading) { // If loading, show a loading screen
+        Surface(Modifier.fillMaxSize()) { // Surface to fill the screen
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { // Center the content
+                Text("Loading pub details...") // Loading text
+            }
+        }
+        return // Return
+    }
+
+    if (errorMessage != null || pubDetails == null) { // If there is an error, show it
+        Surface(Modifier.fillMaxSize()) { // Surface to fill the screen
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { // Center the content
+                Text(errorMessage ?: "Pub not found")  // Error message text
+            }
+        }
+        return // Return
+    }
+
+// from here on, pubDetails is not null
+    val pub = pubDetails!! // Set the pub details that cannot be null
+
     Scaffold( // Main scaffold for the screen
-        bottomBar = { // Full-width Check-in button
-            if (!checkedIn) {
+        bottomBar = { // Full width Check-in button
+            if (!checkedIn) { // If the user is not checked in
                 // Button
-                Button(
-                    onClick = { checkedIn = true },
+                Button( // Button to check-in
+                    onClick = { checkedIn = true }, // Check in when clicked
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .fillMaxWidth() // Fill the width
+                        .padding(horizontal = 16.dp, vertical = 12.dp) // Padding
                 ) {
-                    Text("Check-in")
+                    Text("Check-in") // Button Text
                 }
             }
         }
@@ -141,8 +160,124 @@ fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
                 Text("Back", style = MaterialTheme.typography.bodyMedium)
             }
 
-            ImagePlaceHolder() // Placeholder for the image
-            PubDetailsBlock(pub) // Details block for the pub
+
+            val photos = pub.photoReferences // List of photos
+            // If photos are available, show a carrousel of them
+            if (photos.isNotEmpty()) { // If there are photos
+                val photoRef = photos[currentPhotoIndex] // Get the current photo
+                val photoUrl = // Build the photo URL
+                    "https://maps.googleapis.com/maps/api/place/photo" +
+                            "?maxwidth=800" +
+                            "&photo_reference=$photoRef" +
+                            "&key=${context.getString(R.string.google_maps_key)}"
+
+                Box( // Box to hold the photo
+                    modifier = Modifier // Modifier for the box
+                        .fillMaxWidth() // Fill the width
+                        .height(200.dp) // Set height to 200dp
+                ) {
+                    // Photo
+                    AsyncImage( // Async image for the photo
+                        model = photoUrl, // Photo URL
+                        contentDescription = "Pub photo", // Content description
+                        modifier = Modifier // Modifier for the photo
+                            .fillMaxSize() // Fill the available space
+                    )
+
+                    // Arrows for navigate through photos
+                    Row( // Row to hold the arrows
+                        modifier = Modifier // Modifier for the row
+                            .fillMaxWidth() // Fill the width
+                            .padding(8.dp) // Padding inside the row
+                            .align(Alignment.Center), // Align to the Center (Check the alignment)
+                        horizontalArrangement = Arrangement.SpaceBetween // Space between items
+                    ) {
+                        Text( // Text for the back arrow
+                            text = "<", // Set it to be the "<" symbol
+                            style = MaterialTheme.typography.headlineMedium, // Set the style
+                            modifier = Modifier // Modifier for the text
+                                .clickable { // Make the arrow clickable
+                                    // If the current photo is not the first
+                                    if (currentPhotoIndex > 0) {
+                                        currentPhotoIndex-- // Decrease the index
+                                    } else { // If it is the first
+                                        // Set the index to the last photo
+                                        currentPhotoIndex = photos.size - 1
+                                    }
+                                }
+                                .padding(8.dp) // Padding inside the text
+                        )
+                        Text( // Text for the forward arrow
+                            text = ">", // Set it to be the ">" symbol
+                            style = MaterialTheme.typography.headlineMedium, // Set the style
+                            modifier = Modifier // Modifier for the text
+                                .clickable { // Make the arrow clickable
+                                    // If the current photo is not the last
+                                    if (currentPhotoIndex < photos.size - 1) {
+                                        currentPhotoIndex++ // Increase the index
+                                    } else { // If it is the last
+                                        currentPhotoIndex = 0 // Set the index to the first photo
+                                    }
+                                }
+                                .padding(8.dp) // Padding inside the text
+                        )
+                    }
+                }
+            } else { // If there are no photos
+                ImagePlaceHolder() // Use the ImagePlaceHolder
+            }
+            // Pub name
+            Text(pub.name, style = MaterialTheme.typography.headlineSmall)
+
+            // Pub address
+            pub.formattedAddress?.let { // If there is an address
+                Spacer(modifier = Modifier.height(4.dp)) // Spacing between items
+                Text(it, style = MaterialTheme.typography.bodyMedium) // Address text
+            }
+
+            // Pub rating + Pub price level
+            Spacer(modifier = Modifier.height(4.dp)) // Spacing between items
+            // If there is a rating show it, else show "No rating"
+            val ratingText = pub.rating?.let { "⭐ %.1f".format(it) } ?: "No rating"
+            // If there is a price level show it, else show "Price unknown"
+            val priceText = when (pub.priceLevel) {
+                0 -> "Free"
+                1 -> "€"
+                2 -> "€€"
+                3 -> "€€€"
+                4 -> "€€€€"
+                else -> "Price unknown"
+            }
+            // Rating text
+            Text("$ratingText • $priceText", style = MaterialTheme.typography.bodyMedium)
+
+            // Pub opening hours
+            if (pub.currentOpeningHours.isNotEmpty()) { // If there are opening hours
+                Spacer(modifier = Modifier.height(8.dp)) // Spacing between items
+                // Opening hours title
+                Text("Opening hours:", style = MaterialTheme.typography.titleSmall)
+                pub.currentOpeningHours.forEach { line -> // For each line in the opening hours
+                    // Print the line text
+                    Text(line, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+
+            // Pub phone, website and Google Maps URL
+            pub.formattedPhoneNumber?.let { // If there is a phone number
+                Spacer(modifier = Modifier.height(8.dp)) // Spacing between items
+                // Display phone text
+                Text("Phone: $it", style = MaterialTheme.typography.bodySmall)
+            }
+            pub.website?.let { // If there is a website
+                Spacer(modifier = Modifier.height(4.dp)) // Spacing between items
+                // Display website text
+                Text("Website: $it", style = MaterialTheme.typography.bodySmall)
+            }
+            pub.url?.let { // If there is a Google Maps URL
+                Spacer(modifier = Modifier.height(4.dp)) // Spacing between items
+                // Display Google Maps URL text
+                Text("Google Maps: $it", style = MaterialTheme.typography.bodySmall)
+            }
 
             if (checkedIn) { // If the user is checked in, show the check-in options
                 Spacer(modifier = Modifier.height(4.dp)) // Spacing between items
