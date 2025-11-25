@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "366422502126",
+    "project_id": "wheres-the-craic",
+    "storage_bucket": "wheres-the-craic.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:366422502126:android:1d46b522ed34fc39b7a1ff",
+        "android_client_info": {
+          "package_name": "com.main.wheres_the_craic"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB0DUuJxaHDVApPIcQuv4rHYDPRMicoqXw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

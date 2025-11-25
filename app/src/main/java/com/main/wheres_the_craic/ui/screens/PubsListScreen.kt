@@ -1,3 +1,4 @@
+// Filepath: com/main/wheres_the_craic/ui/screens/PubsListScreen.kt
 package com.main.wheres_the_craic.ui.screens
 
 import android.annotation.SuppressLint

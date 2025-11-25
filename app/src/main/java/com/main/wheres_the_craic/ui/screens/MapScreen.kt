@@ -52,7 +52,6 @@ fun MapScreen(onPubSelected: (String) -> Unit = {}) {
         onPermissionGranted = { hasPermission = true },
         onPermissionDenied = { hasPermission = false }
     )
-
     // After permission, fetch last location, temporarily Dublin
     LaunchedEffect(hasPermission) {
         // If permission is not granted it should do nothing

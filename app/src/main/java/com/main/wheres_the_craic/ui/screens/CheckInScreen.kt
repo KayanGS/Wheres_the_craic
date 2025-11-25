@@ -1,3 +1,4 @@
+// Filepath: com/main/wheres_the_craic/ui/screens/CheckInScreen.kt
 package com.main.wheres_the_craic.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
@@ -28,7 +29,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+<<<<<<< Updated upstream
 import com.main.wheres_the_craic.data.FakePubs
+=======
+import coil.compose.AsyncImage
+import com.main.wheres_the_craic.data.PubDetails
+import com.main.wheres_the_craic.R
+import com.main.wheres_the_craic.data.fetchPubDetails
+import com.main.wheres_the_craic.data.savePubCheckInTags
+>>>>>>> Stashed changes
 import com.main.wheres_the_craic.ui.components.ImagePlaceHolder
 import com.main.wheres_the_craic.ui.components.PubDetailsBlock
 import com.main.wheres_the_craic.ui.components.TagsSelector
@@ -45,6 +54,7 @@ import com.main.wheres_the_craic.ui.components.TAGS_BY_CATEGORY
 @Composable
 fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
 
+<<<<<<< Updated upstream
     val pub = FakePubs.getById(pubId) // Retrieve pub details based on the pubID
     // State variable to check if user checked in or not, to show determined UI options
     var checkedIn by remember { mutableStateOf(false) }
@@ -53,6 +63,45 @@ fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
         Surface(Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Pub not found")
+=======
+    val context = LocalContext.current // Get the current context
+    // State for the pub details
+    var pubDetails by remember { mutableStateOf<PubDetails?>(null) }
+    var isLoading by remember { mutableStateOf(true) } // State for loading
+    // State for error messages
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var checkedIn by remember { mutableStateOf(false) } // State for the user check-in status
+    // State for the current photo index
+    var currentPhotoIndex by remember { mutableStateOf(0) }
+    // State for the selected tags
+    var selectedTags by remember { mutableStateOf<Set<String>>(emptySet()) }
+
+    // Save the tags when the user checks in
+    LaunchedEffect(selectedTags, checkedIn) { // Launch the effect
+        val id = pubId // Get the pub ID
+        if (checkedIn && id != null) { // If the user is checked in and the pub ID is not null
+            try { // Try to save the tags
+                savePubCheckInTags(id, selectedTags) // Save the tags
+            } catch (e: Exception) {
+                // If there is an error, show the error message
+                errorMessage = "Failed to save tags"
+            }
+        }
+    }
+
+    // Load details when pubId changes
+    LaunchedEffect(pubId) {
+        if (pubId == null) { // If pubId is null, show error message
+            errorMessage = "Invalid pub" // Error Message
+            isLoading = false // Stop loading
+            return@LaunchedEffect // Return early
+        }
+
+        try { // Try to load the details
+            val apiKey = context.getString(R.string.google_maps_key) // Get the API key
+            val details = withContext(Dispatchers.IO) { // Fetch the details in a coroutine
+                fetchPubDetails(pubId, apiKey) // Fetch the details
+>>>>>>> Stashed changes
             }
         }
         return // Early return to prevent the rest of the code from executing in case pub is null
@@ -94,9 +143,6 @@ fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
 
             ImagePlaceHolder() // Placeholder for the image
             PubDetailsBlock(pub) // Details block for the pub
-
-            // State to store selected tags
-            var selectedTags by remember { mutableStateOf<Set<String>>(emptySet()) }
 
             if (checkedIn) { // If the user is checked in, show the check-in options
                 Spacer(modifier = Modifier.height(4.dp)) // Spacing between items
