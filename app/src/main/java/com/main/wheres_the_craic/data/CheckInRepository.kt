@@ -33,6 +33,10 @@ suspend fun savePubCheckInTags(
         .await() // Wait for the result
 }
 
+/**
+ * Increments the crowd count for a pub.
+ * @param pubId The ID of the pub.
+ */
 suspend fun incrementPubCrowd(pubId: String) {
     val db = Firebase.firestore // Get the database instance
 
@@ -47,4 +51,38 @@ suspend fun incrementPubCrowd(pubId: String) {
         .document(pubId) // Use the pub ID as the document ID
         .set(data, SetOptions.merge()) // Set the data
         .await() // Wait for the result
+}
+
+/**
+ * Fetches the check-in data for a pub.
+ * @param pubId The ID of the pub.
+ */
+data class PubCheckInData(
+    val tags: Set<String>, // Set of tags
+    val crowdCount: Long? // The Crowd Count
+)
+
+/**
+ * Fetches the check-in data for a pub.
+ * @param pubId The ID of the pub.
+ */
+suspend fun getPubCheckIn(pubId: String): PubCheckInData? {
+    val db = Firebase.firestore // Get the database instance
+
+    // Get the pub data from the database
+    val snapshot = db.collection("pub_checkins")
+        .document(pubId) // Use the pub ID as the document ID
+        .get() // Get the data
+        .await() // Wait for the result
+
+    if (!snapshot.exists()) return null // If the snapshot does not exist, return null
+
+    val tagsList = snapshot.get("tags") as? List<*> ?: emptyList<Any>() // Return the pub tags
+    val tags = tagsList.filterIsInstance<String>().toSet() // Convert the list to a set of strings
+    val crowdCount = snapshot.getLong("crowdCount") // Return the crowd count
+
+    return PubCheckInData( // Return the pub check-in data
+        tags = tags, // Set of tags
+        crowdCount = crowdCount // The Crowd Count
+    )
 }

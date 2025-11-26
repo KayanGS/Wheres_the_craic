@@ -1,12 +1,15 @@
 // Filepath: com/main/wheres_the_craic/ui/screens/CheckInScreen.kt
 package com.main.wheres_the_craic.ui.screens
 
+import android.content.Context
+import android.content.Intent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,6 +19,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -32,11 +37,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.main.wheres_the_craic.data.PubDetails
 import com.main.wheres_the_craic.R
 import com.main.wheres_the_craic.data.fetchPubDetails
+import com.main.wheres_the_craic.data.getPubCheckIn
 import com.main.wheres_the_craic.data.incrementPubCrowd
 import com.main.wheres_the_craic.data.savePubCheckInTags
 import com.main.wheres_the_craic.ui.components.ImagePlaceHolder
@@ -45,6 +53,7 @@ import com.main.wheres_the_craic.ui.components.TAGS_BY_CATEGORY
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.core.net.toUri
 
 
 /**
@@ -59,6 +68,7 @@ import kotlinx.coroutines.withContext
 fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
 
     val context = LocalContext.current // Get the current context
+    val uriHandler = LocalUriHandler.current // Get the URI handler for opening URLs
     // State for the pub details
     var pubDetails by remember { mutableStateOf<PubDetails?>(null) }
     var isLoading by remember { mutableStateOf(true) } // State for loading
@@ -90,17 +100,32 @@ fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
             return@LaunchedEffect // Return early
         }
         try { // Try to load the details
+
             val apiKey = context.getString(R.string.google_maps_key) // Get the API key
             val details = withContext(Dispatchers.IO) { // Fetch the details in a coroutine
                 fetchPubDetails(pubId, apiKey) // Fetch the details
             }
+
             if (details == null) { // If details are null, show error message
                 errorMessage = "Pub not found" // Error Message
+
             } else { // Else, set the details
+
                 pubDetails = details // Set the details
+
+                // Fetch the check-in data in a coroutine
+                val checkInData = withContext(Dispatchers.IO) {
+
+                    getPubCheckIn(pubId) // Fetch the check-in data
+                }
+
+                if (checkInData != null) { // If check-in data is not null
+                    selectedTags = checkInData.tags // Set the selected tags
+                }
             }
         } catch (e: Exception) { // If there is an error, show error message
             errorMessage = "Failed to load pub details" // Error Message
+
         } finally { // Finally, stop loading
             isLoading = false // Stop Loading
         }
@@ -127,6 +152,8 @@ fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
     val pub = pubDetails!! // Set the pub details that cannot be null
 
     Scaffold( // Main scaffold for the screen
+        modifier = Modifier.fillMaxSize(),
+        contentWindowInsets = WindowInsets(0),
         bottomBar = { // Full width Check-in button
             if (!checkedIn) { // If the user is not checked in
                 // Button
@@ -141,7 +168,6 @@ fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
                                 } catch (e: Exception) { // If there is an error, show error message
                                     errorMessage = "Failed to increment crowd" // Error Message
                                 }
-
                             }
                         }
                     }, // Check in when clicked
@@ -159,8 +185,6 @@ fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
                 .padding(inner) // Padding inside the screen
                 .fillMaxSize() // Fill the available space
                 .verticalScroll(rememberScrollState()) // Allow scrolling
-                .padding(16.dp), // Padding inside the column
-            verticalArrangement = Arrangement.spacedBy(16.dp) // Spacing between items
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) { // Row for the back button
                 IconButton(onClick = onBack) { // Back button
@@ -172,141 +196,194 @@ fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
                 // Text for the back button
                 Text("Back", style = MaterialTheme.typography.bodyMedium)
             }
-            val photos = pub.photoReferences // List of photos
-            // If photos are available, show a carrousel of them
-            if (photos.isNotEmpty()) { // If there are photos
-                val photoRef = photos[currentPhotoIndex] // Get the current photo
-                val photoUrl = // Build the photo URL
-                    "https://maps.googleapis.com/maps/api/place/photo" +
-                            "?maxwidth=800" +
-                            "&photo_reference=$photoRef" +
-                            "&key=${context.getString(R.string.google_maps_key)}"
 
-                Box( // Box to hold the photo
-                    modifier = Modifier // Modifier for the box
-                        .fillMaxWidth() // Fill the width
-                        .height(200.dp) // Set height to 200dp
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Photo
-                    AsyncImage( // Async image for the photo
-                        model = photoUrl, // Photo URL
-                        contentDescription = "Pub photo", // Content description
-                        modifier = Modifier // Modifier for the photo
-                            .fillMaxSize() // Fill the available space
-                    )
+                    val photos = pub.photoReferences // List of photos
+                    // If photos are available, show a carrousel of them
+                    if (photos.isNotEmpty()) { // If there are photos
+                        val photoRef = photos[currentPhotoIndex] // Get the current photo
+                        val photoUrl = // Build the photo URL
+                            "https://maps.googleapis.com/maps/api/place/photo" +
+                                    "?maxwidth=800" +
+                                    "&photo_reference=$photoRef" +
+                                    "&key=${context.getString(R.string.google_maps_key)}"
 
-                    // Arrows for navigate through photos
-                    Row( // Row to hold the arrows
-                        modifier = Modifier // Modifier for the row
-                            .fillMaxWidth() // Fill the width
-                            .padding(8.dp) // Padding inside the row
-                            .align(Alignment.Center), // Align to the Center (Check the alignment)
-                        horizontalArrangement = Arrangement.SpaceBetween // Space between items
-                    ) {
-                        Text( // Text for the back arrow
-                            text = "<", // Set it to be the "<" symbol
-                            style = MaterialTheme.typography.headlineMedium, // Set the style
-                            modifier = Modifier // Modifier for the text
-                                .clickable { // Make the arrow clickable
-                                    // If the current photo is not the first
-                                    if (currentPhotoIndex > 0) {
-                                        currentPhotoIndex-- // Decrease the index
-                                    } else { // If it is the first
-                                        // Set the index to the last photo
-                                        currentPhotoIndex = photos.size - 1
-                                    }
-                                }
-                                .padding(8.dp) // Padding inside the text
+                        Box( // Box to hold the photo
+                            modifier = Modifier // Modifier for the box
+                                .fillMaxWidth() // Fill the width
+                                .height(200.dp) // Set height to 200dp
+                        ) {
+                            // Photo
+                            AsyncImage( // Async image for the photo
+                                model = photoUrl, // Photo URL
+                                contentDescription = "Pub photo", // Content description
+                                modifier = Modifier // Modifier for the photo
+                                    .fillMaxSize() // Fill the available space
+                            )
+
+                            // Arrows for navigate through photos
+                            Row( // Row to hold the arrows
+                                modifier = Modifier // Modifier for the row
+                                    .fillMaxWidth() // Fill the width
+                                    .padding(8.dp) // Padding inside the row
+                                    .align(Alignment.Center), // Align to the Center
+                                // Space between items
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text( // Text for the back arrow
+                                    text = "<", // Set it to be the "<" symbol
+                                    // Set the style
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    modifier = Modifier // Modifier for the text
+                                        .clickable { // Make the arrow clickable
+                                            // If the current photo is not the first
+                                            if (currentPhotoIndex > 0) {
+                                                currentPhotoIndex-- // Decrease the index
+                                            } else { // If it is the first
+                                                // Set the index to the last photo
+                                                currentPhotoIndex = photos.size - 1
+                                            }
+                                        }
+                                        .padding(8.dp) // Padding inside the text
+                                )
+                                Text( // Text for the forward arrow
+                                    text = ">", // Set it to be the ">" symbol
+                                    // Set the style
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    modifier = Modifier // Modifier for the text
+                                        .clickable { // Make the arrow clickable
+                                            // If the current photo is not the last
+                                            if (currentPhotoIndex < photos.size - 1) {
+                                                currentPhotoIndex++ // Increase the index
+                                            } else { // If it is the last
+                                                currentPhotoIndex =
+                                                    0 // Set the index to the first photo
+                                            }
+                                        }
+                                        .padding(8.dp) // Padding inside the text
+                                )
+                            }
+                        }
+                    } else { // If there are no photos
+                        ImagePlaceHolder() // Use the ImagePlaceHolder
+                    }
+                    // Pub name
+                    Text(pub.name, style = MaterialTheme.typography.headlineSmall)
+
+                    // Pub address
+                    pub.formattedAddress?.let { // If there is an address
+                        Text(it, style = MaterialTheme.typography.bodyMedium) // Address text
+                    }
+
+                    // Divider between items
+                    HorizontalDivider(modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
+
+                    // Pub rating + Pub price level
+                    // If there is a rating show it, else show "No rating"
+                    val ratingText = pub.rating?.let { "⭐ %.1f".format(it) } ?: "No rating"
+                    // If there is a price level show it, else show "Price unknown"
+                    val priceText = when (pub.priceLevel) {
+                        0 -> "Free"
+                        1 -> "€"
+                        2 -> "€€"
+                        3 -> "€€€"
+                        4 -> "€€€€"
+                        else -> "Price unknown"
+                    }
+
+                    // Rating text
+                    // Rating text
+                    Text("$ratingText • $priceText", style = MaterialTheme.typography.bodyMedium)
+
+                    // Divider between items
+                    HorizontalDivider(modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
+
+                    // Pub opening hours
+                    if (pub.currentOpeningHours.isNotEmpty()) { // If there are opening hours
+                        // Opening hours title
+                        Text("Opening hours:", style = MaterialTheme.typography.titleSmall)
+                        // For each line in the opening hours
+                        pub.currentOpeningHours.forEach { line ->
+                            // Print the line text
+                            Text(line, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(top = 8.dp, bottom = 8.dp))
+
+                    Text("Contact Info:", style = MaterialTheme.typography.titleSmall)
+                    // Phone
+                    pub.formattedPhoneNumber?.let { phone -> // If there is a phone number
+                        Text( // Text for the phone number
+                            text = "Phone: $phone", // Phone number text
+                            style = MaterialTheme.typography.bodySmall, // Set to be smaller
+                            color = MaterialTheme.colorScheme.primary, // Set to be blue
+                            textDecoration = TextDecoration.Underline, // Set to be underlined
+                            modifier = Modifier.clickable { // Make the text clickable
+                                // Dial the phone number
+                                dialPhoneNumber(context, phone)
+                            }
                         )
-                        Text( // Text for the forward arrow
-                            text = ">", // Set it to be the ">" symbol
-                            style = MaterialTheme.typography.headlineMedium, // Set the style
-                            modifier = Modifier // Modifier for the text
-                                .clickable { // Make the arrow clickable
-                                    // If the current photo is not the last
-                                    if (currentPhotoIndex < photos.size - 1) {
-                                        currentPhotoIndex++ // Increase the index
-                                    } else { // If it is the last
-                                        currentPhotoIndex = 0 // Set the index to the first photo
-                                    }
-                                }
-                                .padding(8.dp) // Padding inside the text
+                    }
+                    // Website
+                    pub.website?.let { websiteUrl -> // If there is a website
+                        Text(
+                            text = "Website: $websiteUrl", // Website text
+                            style = MaterialTheme.typography.bodySmall, // Set to be smaller
+                            color = MaterialTheme.colorScheme.primary, // Set to be blue
+                            textDecoration = TextDecoration.Underline, // Set to be underlined
+                            modifier = Modifier.clickable { // Make the text clickable
+                                uriHandler.openUri(websiteUrl) // Open the website
+                            }
+                        )
+                    }
+
+                    if (selectedTags.isNotEmpty()) { // If there are selected tags
+                        HorizontalDivider(modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
+                        Text(
+                            "Current Selected tags:",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            selectedTags.joinToString(", "),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+
+                    if (checkedIn) { // If the user is checked in, show the check-in options
+                        Spacer(modifier = Modifier.height(2.dp)) // Spacing between items
+                        // Text for the check-in options
+                        Text("Check-in options", style = MaterialTheme.typography.titleMedium)
+                        TagsSelector( // Tags selector for extra tags
+                            categories = TAGS_BY_CATEGORY, // All available tags
+                            selected = selectedTags, // Selected tags
+                            onToggle = { tag ->// Callback when a tag is toggled
+                                // If the tag is already selected, remove it; otherwise, add it
+                                selectedTags =
+                                    if (tag in selectedTags) {
+                                        selectedTags - tag
+                                    } else selectedTags + tag
+
+                            }
                         )
                     }
                 }
-            } else { // If there are no photos
-                ImagePlaceHolder() // Use the ImagePlaceHolder
-            }
-            // Pub name
-            Text(pub.name, style = MaterialTheme.typography.headlineSmall)
-
-            // Pub address
-            pub.formattedAddress?.let { // If there is an address
-                Spacer(modifier = Modifier.height(4.dp)) // Spacing between items
-                Text(it, style = MaterialTheme.typography.bodyMedium) // Address text
-            }
-
-            // Pub rating + Pub price level
-            Spacer(modifier = Modifier.height(4.dp)) // Spacing between items
-            // If there is a rating show it, else show "No rating"
-            val ratingText = pub.rating?.let { "⭐ %.1f".format(it) } ?: "No rating"
-            // If there is a price level show it, else show "Price unknown"
-            val priceText = when (pub.priceLevel) {
-                0 -> "Free"
-                1 -> "€"
-                2 -> "€€"
-                3 -> "€€€"
-                4 -> "€€€€"
-                else -> "Price unknown"
-            }
-            // Rating text
-            Text("$ratingText • $priceText", style = MaterialTheme.typography.bodyMedium)
-
-            // Pub opening hours
-            if (pub.currentOpeningHours.isNotEmpty()) { // If there are opening hours
-                Spacer(modifier = Modifier.height(8.dp)) // Spacing between items
-                // Opening hours title
-                Text("Opening hours:", style = MaterialTheme.typography.titleSmall)
-                pub.currentOpeningHours.forEach { line -> // For each line in the opening hours
-                    // Print the line text
-                    Text(line, style = MaterialTheme.typography.bodySmall)
-                }
-            }
-
-            // Pub phone, website and Google Maps URL
-            pub.formattedPhoneNumber?.let { // If there is a phone number
-                Spacer(modifier = Modifier.height(8.dp)) // Spacing between items
-                // Display phone text
-                Text("Phone: $it", style = MaterialTheme.typography.bodySmall)
-            }
-            pub.website?.let { // If there is a website
-                Spacer(modifier = Modifier.height(4.dp)) // Spacing between items
-                // Display website text
-                Text("Website: $it", style = MaterialTheme.typography.bodySmall)
-            }
-            pub.url?.let { // If there is a Google Maps URL
-                Spacer(modifier = Modifier.height(4.dp)) // Spacing between items
-                // Display Google Maps URL text
-                Text("Google Maps: $it", style = MaterialTheme.typography.bodySmall)
-            }
-
-            if (checkedIn) { // If the user is checked in, show the check-in options
-                Spacer(modifier = Modifier.height(4.dp)) // Spacing between items
-                // Text for the check-in options
-                Text("Check-in options", style = MaterialTheme.typography.titleMedium)
-
-                TagsSelector( // Tags selector for extra tags
-                    categories = TAGS_BY_CATEGORY, // All available tags
-                    selected = selectedTags, // Selected tags
-                    onToggle = { tag ->// Callback when a tag is toggled
-                        // If the tag is already selected, remove it; otherwise, add it
-                        selectedTags =
-                            if (tag in selectedTags) selectedTags - tag else selectedTags + tag
-                    }
-                )
             }
         }
     }
 }
 
-
+// Simple helper to open the dialer
+private fun dialPhoneNumber(context: Context, phoneNumber: String) {
+    val intent = Intent(Intent.ACTION_DIAL).apply {
+        data = "tel:$phoneNumber".toUri()
+    }
+    context.startActivity(intent)
+}
