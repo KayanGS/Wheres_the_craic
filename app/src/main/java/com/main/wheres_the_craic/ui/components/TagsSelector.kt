@@ -3,10 +3,10 @@ package com.main.wheres_the_craic.ui.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,13 +29,18 @@ fun TagsSelector(
     // Shows 3 chips per row
     val chipsPerRow = 3
 
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { // Spacing between rows
-        categories.forEach { (title, tags) -> // Title and tags for each category
+    Column(verticalArrangement = Arrangement.spacedBy(1.dp)) { // Spacing between rows
+        categories.forEach { (title, tags) -> // Title and tags for each category#
+
+            // Divider between items
+            HorizontalDivider(modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
+
             Text(title, style = MaterialTheme.typography.titleSmall)
-            Spacer(Modifier.height(4.dp)) // Spacing between title and tags
+
             tags.chunked(chipsPerRow).forEach { chunk ->
                 Row( // Row for each chunk
-                    horizontalArrangement = Arrangement.spacedBy(8.dp), // Spacing between chips
+                    // Spacing between chips
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth() // Fill the width
                 ) {
                     chunk.forEach { tag -> // For each tag in the chunk
