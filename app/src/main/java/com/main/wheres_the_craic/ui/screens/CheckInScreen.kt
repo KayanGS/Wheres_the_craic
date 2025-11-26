@@ -27,6 +27,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,11 +37,13 @@ import coil.compose.AsyncImage
 import com.main.wheres_the_craic.data.PubDetails
 import com.main.wheres_the_craic.R
 import com.main.wheres_the_craic.data.fetchPubDetails
+import com.main.wheres_the_craic.data.incrementPubCrowd
 import com.main.wheres_the_craic.data.savePubCheckInTags
 import com.main.wheres_the_craic.ui.components.ImagePlaceHolder
 import com.main.wheres_the_craic.ui.components.TagsSelector
 import com.main.wheres_the_craic.ui.components.TAGS_BY_CATEGORY
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 
@@ -66,7 +69,7 @@ fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
     var currentPhotoIndex by remember { mutableStateOf(0) }
     // State for the selected tags
     var selectedTags by remember { mutableStateOf<Set<String>>(emptySet()) }
-
+    val scope = rememberCoroutineScope() // Remember the coroutine scope
     // Save the tags when the user checks in
     LaunchedEffect(selectedTags, checkedIn) { // Launch the effect
         val id = pubId // Get the pub ID
@@ -79,7 +82,6 @@ fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
             }
         }
     }
-
     // Load details when pubId changes
     LaunchedEffect(pubId) {
         if (pubId == null) { // If pubId is null, show error message
@@ -87,7 +89,6 @@ fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
             isLoading = false // Stop loading
             return@LaunchedEffect // Return early
         }
-
         try { // Try to load the details
             val apiKey = context.getString(R.string.google_maps_key) // Get the API key
             val details = withContext(Dispatchers.IO) { // Fetch the details in a coroutine
@@ -122,8 +123,7 @@ fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
         }
         return // Return
     }
-
-// from here on, pubDetails is not null
+    // from here on, pubDetails is not null
     val pub = pubDetails!! // Set the pub details that cannot be null
 
     Scaffold( // Main scaffold for the screen
@@ -131,7 +131,20 @@ fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
             if (!checkedIn) { // If the user is not checked in
                 // Button
                 Button( // Button to check-in
-                    onClick = { checkedIn = true }, // Check in when clicked
+                    onClick = { // When clicked get pub id and increment crowd
+                        checkedIn = true // Set checked in to true
+                        val id = pubId // Get the pub ID
+                        if (id != null) { // If the pub ID is not null
+                            scope.launch { // Launch a coroutine
+                                try { // Try to increment the crowd
+                                    incrementPubCrowd(id) // Increment the crowd
+                                } catch (e: Exception) { // If there is an error, show error message
+                                    errorMessage = "Failed to increment crowd" // Error Message
+                                }
+
+                            }
+                        }
+                    }, // Check in when clicked
                     modifier = Modifier
                         .fillMaxWidth() // Fill the width
                         .padding(horizontal = 16.dp, vertical = 12.dp) // Padding
@@ -159,8 +172,6 @@ fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
                 // Text for the back button
                 Text("Back", style = MaterialTheme.typography.bodyMedium)
             }
-
-
             val photos = pub.photoReferences // List of photos
             // If photos are available, show a carrousel of them
             if (photos.isNotEmpty()) { // If there are photos
