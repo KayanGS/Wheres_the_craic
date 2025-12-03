@@ -20,7 +20,8 @@ data class PlaceResult(
     val pubLongitude: Double,
     val rating: Double?,
     val isOpenNow: Boolean?,
-    val photoReference: String?
+    val photoReference: String?,
+    val crowdCount: Long = 0L
 )
 
 suspend fun fetchNearbyPubs(

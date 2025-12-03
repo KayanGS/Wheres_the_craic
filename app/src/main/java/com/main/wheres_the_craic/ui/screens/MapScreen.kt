@@ -10,6 +10,9 @@ import androidx.compose.ui.platform.LocalContext
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.LatLng
 import android.annotation.SuppressLint
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -17,6 +20,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.google.android.gms.maps.model.BitmapDescriptor
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.libraries.places.api.Places
 import com.google.maps.android.compose.GoogleMap
@@ -28,6 +33,7 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.main.wheres_the_craic.R
 import com.main.wheres_the_craic.data.PlaceResult
 import com.main.wheres_the_craic.data.fetchNearbyPubs
+import com.main.wheres_the_craic.data.getPubCheckIn
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -98,8 +104,23 @@ fun MapScreen(onPubSelected: (String) -> Unit = {}) {
                     searchRadius
                 )
             }
-            println("DEBUG pubs count: ${nearbyPubsResults.size}")
-            nearbyPubs = nearbyPubsResults
+
+            val pubsCrowd = withContext(Dispatchers.IO) {
+                val list = mutableListOf<PlaceResult>()
+                for (place in nearbyPubsResults) {
+                    val crowd = try {
+                        place.pubId?.let { id ->
+                            getPubCheckIn(id)?.crowdCount ?: 0L
+                        } ?: 0L
+                    } catch (e: Exception) {
+                        0L
+                    }
+                    list.add(place.copy(crowdCount = crowd))
+                }
+                list
+            }
+
+            nearbyPubs = pubsCrowd
         } catch (e: Exception) {
             nearbyPubs = emptyList()
         }
@@ -145,16 +166,38 @@ fun MapScreen(onPubSelected: (String) -> Unit = {}) {
                                 place.pubLongitude
                             )
                         ),
-                        title = place.pubName,
+                        title = "${place.pubName} (${place.crowdCount})",
+                        icon = crowdCountToMarker(context, place.crowdCount),
                         onClick = {
                             false
                         }
                     )
-
-
-
                 }
             }
         }
     }
 }
+
+/**
+ * Converts the crowd count to a customized marker.
+ *
+ * @param crowdCount The crowd count to convert.
+ */
+fun crowdCountToMarker(context: Context, crowdCount: Long): BitmapDescriptor {
+    val markerResId = when {
+        crowdCount <= 10L -> R.drawable.frozenmarker_lvl1      // 0–10
+        crowdCount <= 20L -> R.drawable.coldmarker_lvl2        // 11–20
+        crowdCount <= 30L -> R.drawable.warmmarker_lvl3        // 21–30
+        crowdCount <= 40L -> R.drawable.hotmarker_lvl4         // 31–40
+        else -> R.drawable.onfiremarker_lvl5                   // 40+
+    }
+
+    val originalSize = BitmapFactory.decodeResource(context.resources, markerResId)
+
+    val targetWidth = 200
+    val targetHeight = 200
+    val scaled = Bitmap.createScaledBitmap(originalSize, targetWidth, targetHeight, true)
+
+    return BitmapDescriptorFactory.fromBitmap(scaled)
+}
+

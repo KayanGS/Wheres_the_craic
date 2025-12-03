@@ -7,6 +7,19 @@ import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.tasks.await
 
+private const val PUB_CHECKINS_COLLECTION = "pub_checkins"
+
+private suspend fun saveInDatabasePubCheckIn(
+    pubId: String,
+    pubFields: Map<String, Any?>
+) {
+    Firebase.firestore
+        .collection(PUB_CHECKINS_COLLECTION) // Save the pub data to the database
+        .document(pubId) // Use the pub ID as the document ID
+        .set(pubFields, SetOptions.merge()) // Set the data
+        .await() //Wait for the result
+}
+
 /**
  * Saves the check-in tags for a pub.
  * @param pubId The ID of the pub.
@@ -14,23 +27,20 @@ import kotlinx.coroutines.tasks.await
  */
 suspend fun savePubCheckInTags(
     pubId: String,
-    tags: Set<String>
+    tags: Set<String>,
 ) {
-    val database = Firebase.firestore // Get the database instance
-
-    // Get the pub data, its ID, the tags and the current time
-    val pubData = mapOf(
+    // Get the pub data, its ID, the tags, the current time and increment the crowd
+    val pubFields = mutableMapOf<String, Any?>(
         "pubId" to pubId,
         "tags" to tags.toList(),
-        "updatedAt" to System.currentTimeMillis()
+        "updatedAt" to System.currentTimeMillis(),
     )
 
-    // Save the pub data to the database
-    database.collection("pub_checkins")
-        .document(pubId) // Use the pub ID as the document ID
-        .set(pubData, SetOptions.merge())// Set the data
-        //.set(pubData)
-        .await() // Wait for the result
+    tags.forEach { tag -> // For each tag
+        val path = "tagCounts.$tag"   // Create the path for the tag
+        pubFields[path] = FieldValue.increment(1) // Increment the tag count
+    }
+    saveInDatabasePubCheckIn(pubId, pubFields) // Save the pub data to the database
 }
 
 /**
@@ -38,19 +48,13 @@ suspend fun savePubCheckInTags(
  * @param pubId The ID of the pub.
  */
 suspend fun incrementPubCrowd(pubId: String) {
-    val db = Firebase.firestore // Get the database instance
-
     // Increment the crowd count by 1
-    val data = mapOf(
-        "pubId" to pubId,
-        "crowdCount" to FieldValue.increment(1)
+    val pubFields = mapOf(
+        "pubId" to pubId, // Set the pub ID
+        "crowdCount" to FieldValue.increment(1) // Increment the crowd count
     )
 
-    // Save the pub data to the database
-    db.collection("pub_checkins")
-        .document(pubId) // Use the pub ID as the document ID
-        .set(data, SetOptions.merge()) // Set the data
-        .await() // Wait for the result
+    saveInDatabasePubCheckIn(pubId, pubFields) // Save the pub data to the database
 }
 
 /**
@@ -77,7 +81,7 @@ suspend fun getPubCheckIn(pubId: String): PubCheckInData? {
 
     if (!snapshot.exists()) return null // If the snapshot does not exist, return null
 
-    val tagsList = snapshot.get("tags") as? List<*> ?: emptyList<Any>() // Return the pub tags
+    val tagsList = snapshot.get("tags") as? List<*> ?: emptyList<Any?>() // Return the pub tags
     val tags = tagsList.filterIsInstance<String>().toSet() // Convert the list to a set of strings
     val crowdCount = snapshot.getLong("crowdCount") // Return the crowd count
 

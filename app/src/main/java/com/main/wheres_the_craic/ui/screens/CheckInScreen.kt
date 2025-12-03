@@ -3,16 +3,12 @@ package com.main.wheres_the_craic.ui.screens
 
 import android.content.Context
 import android.content.Intent
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -20,7 +16,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -30,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -38,22 +34,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
+import androidx.core.net.toUri
 import com.main.wheres_the_craic.data.PubDetails
 import com.main.wheres_the_craic.R
 import com.main.wheres_the_craic.data.fetchPubDetails
 import com.main.wheres_the_craic.data.getPubCheckIn
-import com.main.wheres_the_craic.data.incrementPubCrowd
 import com.main.wheres_the_craic.data.savePubCheckInTags
-import com.main.wheres_the_craic.ui.components.ImagePlaceHolder
-import com.main.wheres_the_craic.ui.components.TagsSelector
-import com.main.wheres_the_craic.ui.components.TAGS_BY_CATEGORY
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import androidx.core.net.toUri
+import com.main.wheres_the_craic.data.incrementPubCrowd
+import com.main.wheres_the_craic.ui.components.PubDetailsContent
 
 
 /**
@@ -69,6 +61,7 @@ fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
 
     val context = LocalContext.current // Get the current context
     val uriHandler = LocalUriHandler.current // Get the URI handler for opening URLs
+
     // State for the pub details
     var pubDetails by remember { mutableStateOf<PubDetails?>(null) }
     var isLoading by remember { mutableStateOf(true) } // State for loading
@@ -76,10 +69,11 @@ fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var checkedIn by remember { mutableStateOf(false) } // State for the user check-in status
     // State for the current photo index
-    var currentPhotoIndex by remember { mutableStateOf(0) }
+    var currentPhotoIndex by remember { mutableIntStateOf(0) }
     // State for the selected tags
     var selectedTags by remember { mutableStateOf<Set<String>>(emptySet()) }
     val scope = rememberCoroutineScope() // Remember the coroutine scope
+
     // Save the tags when the user checks in
     LaunchedEffect(selectedTags, checkedIn) { // Launch the effect
         val id = pubId // Get the pub ID
@@ -115,7 +109,6 @@ fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
 
                 // Fetch the check-in data in a coroutine
                 val checkInData = withContext(Dispatchers.IO) {
-
                     getPubCheckIn(pubId) // Fetch the check-in data
                 }
 
@@ -164,7 +157,7 @@ fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
                         if (id != null) { // If the pub ID is not null
                             scope.launch { // Launch a coroutine
                                 try { // Try to increment the crowd
-                                    incrementPubCrowd(id) // Increment the crowd
+                                    incrementPubCrowd(id)
                                 } catch (e: Exception) { // If there is an error, show error message
                                     errorMessage = "Failed to increment crowd" // Error Message
                                 }
@@ -201,189 +194,35 @@ fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.large
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    val photos = pub.photoReferences // List of photos
-                    // If photos are available, show a carrousel of them
-                    if (photos.isNotEmpty()) { // If there are photos
-                        val photoRef = photos[currentPhotoIndex] // Get the current photo
-                        val photoUrl = // Build the photo URL
-                            "https://maps.googleapis.com/maps/api/place/photo" +
-                                    "?maxwidth=800" +
-                                    "&photo_reference=$photoRef" +
-                                    "&key=${context.getString(R.string.google_maps_key)}"
-
-                        Box( // Box to hold the photo
-                            modifier = Modifier // Modifier for the box
-                                .fillMaxWidth() // Fill the width
-                                .height(200.dp) // Set height to 200dp
-                        ) {
-                            // Photo
-                            AsyncImage( // Async image for the photo
-                                model = photoUrl, // Photo URL
-                                contentDescription = "Pub photo", // Content description
-                                modifier = Modifier // Modifier for the photo
-                                    .fillMaxSize() // Fill the available space
-                            )
-
-                            // Arrows for navigate through photos
-                            Row( // Row to hold the arrows
-                                modifier = Modifier // Modifier for the row
-                                    .fillMaxWidth() // Fill the width
-                                    .padding(8.dp) // Padding inside the row
-                                    .align(Alignment.Center), // Align to the Center
-                                // Space between items
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text( // Text for the back arrow
-                                    text = "<", // Set it to be the "<" symbol
-                                    // Set the style
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    modifier = Modifier // Modifier for the text
-                                        .clickable { // Make the arrow clickable
-                                            // If the current photo is not the first
-                                            if (currentPhotoIndex > 0) {
-                                                currentPhotoIndex-- // Decrease the index
-                                            } else { // If it is the first
-                                                // Set the index to the last photo
-                                                currentPhotoIndex = photos.size - 1
-                                            }
-                                        }
-                                        .padding(8.dp) // Padding inside the text
-                                )
-                                Text( // Text for the forward arrow
-                                    text = ">", // Set it to be the ">" symbol
-                                    // Set the style
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    modifier = Modifier // Modifier for the text
-                                        .clickable { // Make the arrow clickable
-                                            // If the current photo is not the last
-                                            if (currentPhotoIndex < photos.size - 1) {
-                                                currentPhotoIndex++ // Increase the index
-                                            } else { // If it is the last
-                                                currentPhotoIndex =
-                                                    0 // Set the index to the first photo
-                                            }
-                                        }
-                                        .padding(8.dp) // Padding inside the text
-                                )
-                            }
-                        }
-                    } else { // If there are no photos
-                        ImagePlaceHolder() // Use the ImagePlaceHolder
-                    }
-                    // Pub name
-                    Text(pub.name, style = MaterialTheme.typography.headlineSmall)
-
-                    // Pub address
-                    pub.formattedAddress?.let { // If there is an address
-                        Text(it, style = MaterialTheme.typography.bodyMedium) // Address text
-                    }
-
-                    // Divider between items
-                    HorizontalDivider(modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
-
-                    // Pub rating + Pub price level
-                    // If there is a rating show it, else show "No rating"
-                    val ratingText = pub.rating?.let { "⭐ %.1f".format(it) } ?: "No rating"
-                    // If there is a price level show it, else show "Price unknown"
-                    val priceText = when (pub.priceLevel) {
-                        0 -> "Free"
-                        1 -> "€"
-                        2 -> "€€"
-                        3 -> "€€€"
-                        4 -> "€€€€"
-                        else -> "Price unknown"
-                    }
-
-                    // Rating text
-                    // Rating text
-                    Text("$ratingText • $priceText", style = MaterialTheme.typography.bodyMedium)
-
-                    // Divider between items
-                    HorizontalDivider(modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
-
-                    // Pub opening hours
-                    if (pub.currentOpeningHours.isNotEmpty()) { // If there are opening hours
-                        // Opening hours title
-                        Text("Opening hours:", style = MaterialTheme.typography.titleSmall)
-                        // For each line in the opening hours
-                        pub.currentOpeningHours.forEach { line ->
-                            // Print the line text
-                            Text(line, style = MaterialTheme.typography.bodySmall)
-                        }
-                    }
-
-                    HorizontalDivider(modifier = Modifier.padding(top = 8.dp, bottom = 8.dp))
-
-                    Text("Contact Info:", style = MaterialTheme.typography.titleSmall)
-                    // Phone
-                    pub.formattedPhoneNumber?.let { phone -> // If there is a phone number
-                        Text( // Text for the phone number
-                            text = "Phone: $phone", // Phone number text
-                            style = MaterialTheme.typography.bodySmall, // Set to be smaller
-                            color = MaterialTheme.colorScheme.primary, // Set to be blue
-                            textDecoration = TextDecoration.Underline, // Set to be underlined
-                            modifier = Modifier.clickable { // Make the text clickable
-                                // Dial the phone number
-                                dialPhoneNumber(context, phone)
-                            }
-                        )
-                    }
-                    // Website
-                    pub.website?.let { websiteUrl -> // If there is a website
-                        Text(
-                            text = "Website: $websiteUrl", // Website text
-                            style = MaterialTheme.typography.bodySmall, // Set to be smaller
-                            color = MaterialTheme.colorScheme.primary, // Set to be blue
-                            textDecoration = TextDecoration.Underline, // Set to be underlined
-                            modifier = Modifier.clickable { // Make the text clickable
-                                uriHandler.openUri(websiteUrl) // Open the website
-                            }
-                        )
-                    }
-
-                    if (selectedTags.isNotEmpty()) { // If there are selected tags
-                        HorizontalDivider(modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
-                        Text(
-                            "Current Selected tags:",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            selectedTags.joinToString(", "),
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-
-                    if (checkedIn) { // If the user is checked in, show the check-in options
-                        Spacer(modifier = Modifier.height(2.dp)) // Spacing between items
-                        // Text for the check-in options
-                        Text("Check-in options", style = MaterialTheme.typography.titleMedium)
-                        TagsSelector( // Tags selector for extra tags
-                            categories = TAGS_BY_CATEGORY, // All available tags
-                            selected = selectedTags, // Selected tags
-                            onToggle = { tag ->// Callback when a tag is toggled
-                                // If the tag is already selected, remove it; otherwise, add it
-                                selectedTags =
-                                    if (tag in selectedTags) {
-                                        selectedTags - tag
-                                    } else selectedTags + tag
-
-                            }
-                        )
-                    }
-                }
+                PubDetailsContent(
+                    pub = pub,
+                    context = context,
+                    uriHandler = uriHandler,
+                    currentPhotoIndex = currentPhotoIndex,
+                    onCurrentPhotoIndexChange = { newIndex ->
+                        currentPhotoIndex = newIndex
+                    },
+                    selectedTags = selectedTags,
+                    checkedIn = checkedIn,
+                    onSelectedTagsChange = { newSelected ->
+                        selectedTags = newSelected
+                    },
+                    dialPhoneNumber = { phone -> dialPhoneNumber(context, phone) }
+                )
             }
         }
     }
 }
 
-// Simple helper to open the dialer
+/**
+ * Dial the phone number.
+ *
+ * @param context The current context.
+ * @param phoneNumber The phone number to dial.
+ */
 private fun dialPhoneNumber(context: Context, phoneNumber: String) {
-    val intent = Intent(Intent.ACTION_DIAL).apply {
-        data = "tel:$phoneNumber".toUri()
+    val intent = Intent(Intent.ACTION_DIAL).apply { // Intent to dial the phone number
+        data = "tel:$phoneNumber".toUri() // Set the data to the phone number
     }
     context.startActivity(intent)
 }
