@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
 /**
  * Displays the tags.
  *
- * @param allTags The list of all possible tags.
+ * @param categories Map of categories to tags.
  * @param selected The current selected tags.
  * @param onToggle Callback function when clicked will change the state of a tag
  */

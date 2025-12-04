@@ -24,15 +24,14 @@ data class PlaceResult(
     val crowdCount: Long = 0L
 )
 
-suspend fun fetchNearbyPubs(
-    PubLatitude: Double,
-    PubLongitude: Double,
+fun fetchNearbyPubs(
+    pubLatitude: Double,
+    pubLongitude: Double,
     apiKey: String,
-    radiusMeters: Int
 ): List<PlaceResult> {
     // Create the url for the request with the parameters
     val url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json" +
-            "?location=$PubLatitude,$PubLongitude" +
+            "?location=$pubLatitude,$pubLongitude" +
             "&rankby=distance" +
             "&keyword=pub%20bar%20club%20cocktail%20beer%20nightclub" +
             "&key=$apiKey"
@@ -56,7 +55,7 @@ suspend fun fetchNearbyPubs(
             // Get the name or set it to "Unknown" if it is null
             val pubName = pubObject.optString("name", "Unknown")
             // Get the id or set it to null if it is null
-            val pubId = pubObject.optString("place_id", null)
+            val pubId = pubObject.optString("place_id")
             // Get the Location
             val pubLocation = pubObject.getJSONObject("geometry").getJSONObject("location")
             val pubLatitude = pubLocation.getDouble("lat") // Get the latitude

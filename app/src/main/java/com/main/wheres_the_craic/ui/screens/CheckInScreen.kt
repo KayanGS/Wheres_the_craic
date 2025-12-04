@@ -81,6 +81,7 @@ fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
             try { // Try to save the tags
                 savePubCheckInTags(id, selectedTags) // Save the tags
             } catch (e: Exception) {
+                println("Error saving tags for pub $id: $e")
                 // If there is an error, show the error message
                 errorMessage = "Failed to save tags"
             }
@@ -117,6 +118,7 @@ fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
                 }
             }
         } catch (e: Exception) { // If there is an error, show error message
+            println("Error loading pub details for id=$pubId: $e")
             errorMessage = "Failed to load pub details" // Error Message
 
         } finally { // Finally, stop loading
@@ -159,6 +161,7 @@ fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
                                 try { // Try to increment the crowd
                                     incrementPubCrowd(id)
                                 } catch (e: Exception) { // If there is an error, show error message
+                                    println("Error incrementing crowd for pub $id: $e")
                                     errorMessage = "Failed to increment crowd" // Error Message
                                 }
                             }
