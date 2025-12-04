@@ -59,7 +59,8 @@ suspend fun incrementPubCrowd(pubId: String) {
 
 /**
  * Fetches the check-in data for a pub.
- * @param pubId The ID of the pub.
+ *@property tags The set of tags.
+ *@property crowdCount The crowd count.
  */
 data class PubCheckInData(
     val tags: Set<String>, // Set of tags

@@ -12,6 +12,9 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -89,7 +92,7 @@ fun PubPreviewCard(
             if (photoRef != null) {
                 val photoUrl =
                     "https://maps.googleapis.com/maps/api/place/photo" +
-                            "?maxwidth=600" +
+                            "?maxwidth=300" +
                             "&photo_reference=$photoRef" +
                             "&key=$googleMapsApiKey"
 
@@ -106,10 +109,15 @@ fun PubPreviewCard(
             }
 
             // Distance
-            val distanceKm = distanceInKm(
-                userPosition,
-                LatLng(pub.pubLatitude, pub.pubLongitude)
-            )
+            val distanceKm by remember(userPosition, pub.pubLatitude, pub.pubLongitude) {
+                mutableDoubleStateOf(
+                    distanceInKm(
+                        userPosition,
+                        LatLng(pub.pubLatitude, pub.pubLongitude)
+                    )
+                )
+            }
+
             Text(
                 text = "Distance: %.2f km".format(distanceKm),
                 style = MaterialTheme.typography.bodySmall

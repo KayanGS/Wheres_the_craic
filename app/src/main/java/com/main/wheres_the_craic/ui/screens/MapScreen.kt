@@ -10,31 +10,16 @@ import androidx.compose.ui.platform.LocalContext
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.LatLng
 import android.annotation.SuppressLint
-import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.location.Location
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
-import com.google.android.gms.maps.model.BitmapDescriptor
-import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.libraries.places.api.Places
 import com.google.maps.android.compose.GoogleMap
@@ -48,6 +33,8 @@ import com.main.wheres_the_craic.data.PlaceResult
 import com.main.wheres_the_craic.data.fetchNearbyPubs
 import com.main.wheres_the_craic.data.getPubCheckIn
 import com.main.wheres_the_craic.ui.components.PubPreviewCard
+import com.main.wheres_the_craic.ui.components.crowdCountToMarker
+import com.main.wheres_the_craic.ui.components.rememberCrowdMarkerIcons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -104,8 +91,6 @@ fun MapScreen(onPubSelected: (String) -> Unit = {}) {
     LaunchedEffect(locationLoaded) {
         if (!locationLoaded) return@LaunchedEffect // If location not loaded, do nothing
 
-        val searchRadius = 5000 // 5km
-
         try {
             // Create a coroutine to fetch nearby pubs
             val nearbyPubsResults = withContext(Dispatchers.IO) {
@@ -115,8 +100,7 @@ fun MapScreen(onPubSelected: (String) -> Unit = {}) {
                 fetchNearbyPubs(
                     userPosition.latitude,
                     userPosition.longitude,
-                    apiKey,
-                    searchRadius
+                    apiKey
                 )
             }
 
@@ -128,6 +112,7 @@ fun MapScreen(onPubSelected: (String) -> Unit = {}) {
                             getPubCheckIn(id)?.crowdCount ?: 0L
                         } ?: 0L
                     } catch (e: Exception) {
+                        println("Error getting crowd for pub ${place.pubId}: $e")
                         0L
                     }
                     list.add(place.copy(crowdCount = crowd))
@@ -137,6 +122,7 @@ fun MapScreen(onPubSelected: (String) -> Unit = {}) {
 
             nearbyPubs = pubsCrowd
         } catch (e: Exception) {
+            println("Error fetching nearby pubs: $e")
             nearbyPubs = emptyList()
         }
     }
@@ -175,6 +161,8 @@ fun MapScreen(onPubSelected: (String) -> Unit = {}) {
                         zoomControlsEnabled = true // Enable the zoom controls
                     )
                 ) {
+                    val markerIcons = rememberCrowdMarkerIcons()
+
                     nearbyPubs.forEach { place -> // For each pub
                         Marker( // Create a marker
                             state = MarkerState( // Set the marker state
@@ -185,7 +173,7 @@ fun MapScreen(onPubSelected: (String) -> Unit = {}) {
                             ),
                             title = "${place.pubName} (${place.crowdCount})", // Set the title
                             // Set the icon based on the crowd count
-                            icon = crowdCountToMarker(context, place.crowdCount),
+                            icon = crowdCountToMarker(place.crowdCount, markerIcons),
                             onClick = { // When clicked
                                 // Set the selected pub marker to the clicked pub
                                 selectedPubMarker = place
@@ -219,30 +207,4 @@ fun MapScreen(onPubSelected: (String) -> Unit = {}) {
             }
         }
     }
-}
-
-/**
- * Converts the crowd count to a customized marker.
- *
- * @param crowdCount The crowd count to convert.
- */
-fun crowdCountToMarker(context: Context, crowdCount: Long): BitmapDescriptor {
-
-    val markerResId = when { // Set the marker based on the crowd count
-        crowdCount <= 10L -> R.drawable.frozenmarker_lvl1      // 0–10 frozen
-        crowdCount <= 20L -> R.drawable.coldmarker_lvl2        // 11–20 cold
-        crowdCount <= 30L -> R.drawable.warmmarker_lvl3        // 21–30 warm
-        crowdCount <= 40L -> R.drawable.hotmarker_lvl4         // 31–40 hot
-        else -> R.drawable.onfiremarker_lvl5                   // 40+ on fire
-    }
-    // Convert the marker to a bitmap
-    val convertedToBitmapMarker = BitmapFactory.decodeResource(context.resources, markerResId)
-
-    val targetWidth = 200 // Set the target width
-    val targetHeight = 200 // Set the target height
-
-    // Scale the marker to the target size
-    val scaled = Bitmap.createScaledBitmap(convertedToBitmapMarker, targetWidth, targetHeight, true)
-
-    return BitmapDescriptorFactory.fromBitmap(scaled) // Return the marker
 }

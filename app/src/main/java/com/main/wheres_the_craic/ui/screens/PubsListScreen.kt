@@ -80,8 +80,6 @@ fun PubsListScreen(onCheckInClick: (String) -> Unit) {
     LaunchedEffect(locationLoaded) {
         if (!locationLoaded) return@LaunchedEffect // If location not loaded, do nothing
 
-        val searchRadius = 5000 // 5km
-
         try {
             // Create a coroutine to fetch nearby pubs
             val nearbyPubsResults = withContext(Dispatchers.IO) {
@@ -91,13 +89,13 @@ fun PubsListScreen(onCheckInClick: (String) -> Unit) {
                 fetchNearbyPubs(
                     userPosition.latitude,
                     userPosition.longitude,
-                    apiKey,
-                    searchRadius
+                    apiKey
                 )
             }
             println("DEBUG pubs count: ${nearbyPubsResults.size}")
             nearbyPubs = nearbyPubsResults
         } catch (e: Exception) {
+            println("Error fetching nearby pubs in list screen: $e")
             nearbyPubs = emptyList()
         }
     }

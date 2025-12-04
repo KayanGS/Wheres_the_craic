@@ -20,7 +20,7 @@ data class PubDetails(
 
 // still in PubDetailsRepository.kt
 
-suspend fun fetchPubDetails(
+fun fetchPubDetails(
     placeId: String,
     apiKey: String
 ): PubDetails? {
@@ -45,7 +45,7 @@ suspend fun fetchPubDetails(
         val result = json.optJSONObject("result") ?: return null
 
         val name = result.optString("name", "Unknown")
-        val formattedAddress = result.optString("formatted_address", null)
+        val formattedAddress = result.optString("formatted_address")
 
         // photos → list of photo_reference
         val photoRefs = mutableListOf<String>()
@@ -60,7 +60,7 @@ suspend fun fetchPubDetails(
             }
         }
 
-        val urlResult = result.optString("url", null)
+        val urlResult = result.optString("url")
 
         // current_opening_hours.weekday_text → list of strings
         val openingHours = mutableListOf<String>()
@@ -72,8 +72,8 @@ suspend fun fetchPubDetails(
             }
         }
 
-        val phone = result.optString("formatted_phone_number", null)
-        val website = result.optString("website", null)
+        val phone = result.optString("formatted_phone_number")
+        val website = result.optString("website")
 
         val priceLevel = if (result.has("price_level")) {
             result.getInt("price_level")
