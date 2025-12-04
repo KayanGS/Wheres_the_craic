@@ -13,13 +13,26 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.location.Location
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
@@ -34,6 +47,7 @@ import com.main.wheres_the_craic.R
 import com.main.wheres_the_craic.data.PlaceResult
 import com.main.wheres_the_craic.data.fetchNearbyPubs
 import com.main.wheres_the_craic.data.getPubCheckIn
+import com.main.wheres_the_craic.ui.components.PubPreviewCard
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -52,6 +66,7 @@ fun MapScreen(onPubSelected: (String) -> Unit = {}) {
     var userPosition by remember { mutableStateOf(LatLng(53.3498, -6.2603)) } // Dublin default
     var locationLoaded by remember { mutableStateOf(false) }
     var nearbyPubs by remember { mutableStateOf<List<PlaceResult>>(emptyList()) }
+    var selectedPubMarker by remember { mutableStateOf<PlaceResult?>(null) }
 
     // Ask for permission and handle if permission is granted or denied
     LocationPermission(
@@ -149,27 +164,55 @@ fun MapScreen(onPubSelected: (String) -> Unit = {}) {
         }
 
         else -> { // Else, shows the map
-            GoogleMap(
-                modifier = Modifier.fillMaxSize(),
-                cameraPositionState = cameraPositionState,
-                properties = MapProperties(isMyLocationEnabled = true),
-                uiSettings = MapUiSettings(
-                    myLocationButtonEnabled = true,
-                    zoomControlsEnabled = true
-                )
-            ) {
-                nearbyPubs.forEach { place ->
-                    Marker(
-                        state = MarkerState(
-                            position = LatLng(
-                                place.pubLatitude,
-                                place.pubLongitude
-                            )
-                        ),
-                        title = "${place.pubName} (${place.crowdCount})",
-                        icon = crowdCountToMarker(context, place.crowdCount),
-                        onClick = {
-                            false
+            Box(Modifier.fillMaxSize()) {
+                GoogleMap( // Create the map
+                    modifier = Modifier.fillMaxSize(), // Fill the max size
+                    cameraPositionState = cameraPositionState, // Set the camera position state
+                    // Enable the user's location
+                    properties = MapProperties(isMyLocationEnabled = true),
+                    uiSettings = MapUiSettings( // Set the UI settings
+                        myLocationButtonEnabled = true, // Enable the user's location button
+                        zoomControlsEnabled = true // Enable the zoom controls
+                    )
+                ) {
+                    nearbyPubs.forEach { place -> // For each pub
+                        Marker( // Create a marker
+                            state = MarkerState( // Set the marker state
+                                position = LatLng( // Set the position
+                                    place.pubLatitude, // To the pub's latitude
+                                    place.pubLongitude // And longitude
+                                )
+                            ),
+                            title = "${place.pubName} (${place.crowdCount})", // Set the title
+                            // Set the icon based on the crowd count
+                            icon = crowdCountToMarker(context, place.crowdCount),
+                            onClick = { // When clicked
+                                // Set the selected pub marker to the clicked pub
+                                selectedPubMarker = place
+                                true
+                            }
+                        )
+                    }
+                }
+                // Small bottom card when a marker is selected
+                selectedPubMarker?.let { pub -> // If a marker is selected
+                    PubPreviewCard( // Create a card for the selected pub
+                        pub = pub, // Set the pub
+                        userPosition = userPosition, // Set the user position
+                        // Set the Google Maps API key
+                        googleMapsApiKey = context.getString(R.string.google_maps_key),
+                        modifier = Modifier // Set the modifier
+                            .align(Alignment.BottomCenter) // Align to the bottom center
+                            .padding(16.dp) // Add padding
+                            .fillMaxWidth(), // Fill the max width
+                        showCloseButton = true, // Show the close button
+                        // Handle the close button click
+                        onCloseClick = { selectedPubMarker = null },
+                        showButton = true, // Show the button
+                        buttonText = "Open details & Check-in", // Set the button text
+                        onButtonClick = { // Handle the button click
+                            // Navigate to the check-in screen with the selected pub ID
+                            pub.pubId?.let { onPubSelected(it) }
                         }
                     )
                 }
@@ -184,20 +227,22 @@ fun MapScreen(onPubSelected: (String) -> Unit = {}) {
  * @param crowdCount The crowd count to convert.
  */
 fun crowdCountToMarker(context: Context, crowdCount: Long): BitmapDescriptor {
-    val markerResId = when {
-        crowdCount <= 10L -> R.drawable.frozenmarker_lvl1      // 0–10
-        crowdCount <= 20L -> R.drawable.coldmarker_lvl2        // 11–20
-        crowdCount <= 30L -> R.drawable.warmmarker_lvl3        // 21–30
-        crowdCount <= 40L -> R.drawable.hotmarker_lvl4         // 31–40
-        else -> R.drawable.onfiremarker_lvl5                   // 40+
+
+    val markerResId = when { // Set the marker based on the crowd count
+        crowdCount <= 10L -> R.drawable.frozenmarker_lvl1      // 0–10 frozen
+        crowdCount <= 20L -> R.drawable.coldmarker_lvl2        // 11–20 cold
+        crowdCount <= 30L -> R.drawable.warmmarker_lvl3        // 21–30 warm
+        crowdCount <= 40L -> R.drawable.hotmarker_lvl4         // 31–40 hot
+        else -> R.drawable.onfiremarker_lvl5                   // 40+ on fire
     }
+    // Convert the marker to a bitmap
+    val convertedToBitmapMarker = BitmapFactory.decodeResource(context.resources, markerResId)
 
-    val originalSize = BitmapFactory.decodeResource(context.resources, markerResId)
+    val targetWidth = 200 // Set the target width
+    val targetHeight = 200 // Set the target height
 
-    val targetWidth = 200
-    val targetHeight = 200
-    val scaled = Bitmap.createScaledBitmap(originalSize, targetWidth, targetHeight, true)
+    // Scale the marker to the target size
+    val scaled = Bitmap.createScaledBitmap(convertedToBitmapMarker, targetWidth, targetHeight, true)
 
-    return BitmapDescriptorFactory.fromBitmap(scaled)
+    return BitmapDescriptorFactory.fromBitmap(scaled) // Return the marker
 }
-

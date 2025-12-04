@@ -2,20 +2,14 @@
 package com.main.wheres_the_craic.ui.screens
 
 import android.annotation.SuppressLint
-import android.location.Location
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -24,16 +18,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.libraries.places.api.Places
 import com.main.wheres_the_craic.data.PlaceResult
 import com.google.android.gms.location.LocationServices
 import com.main.wheres_the_craic.data.fetchNearbyPubs
 import com.main.wheres_the_craic.R
+import com.main.wheres_the_craic.ui.components.PubPreviewCard
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -131,81 +124,29 @@ fun PubsListScreen(onCheckInClick: (String) -> Unit) {
                 Text(text = "Finding your location...")
             }
         }
-
         else -> {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+            // Else, show the list of nearby pubs
+            val apiKey = context.getString(R.string.google_maps_key) // Get api key
+
+            LazyColumn( // Create a lazy column for the list of pubs
+                modifier = Modifier.fillMaxSize(), // Fill the max size
+                contentPadding = PaddingValues(12.dp), // Add padding
+                verticalArrangement = Arrangement.spacedBy(12.dp) // Space between items
             ) {
-                // Iterate through nearby pubs
-                items(nearbyPubs) { pub ->
-                    // Distance between user and pub
-                    val distanceKm = distanceInKm(
-                        userPosition,
-                        LatLng(pub.pubLatitude, pub.pubLongitude)
-                    )
-                    // Check if pub is open or closed
-                    val isOpenText = when (pub.isOpenNow) {
-                        true -> "Open now"
-                        false -> "Closed"
-                        null -> ""
-                    }
-                    //Pub rating
-                    val ratingText = pub.rating?.let { "%.1f".format(it) } ?: "-"
-                    // Build photo URL from photo_reference, if available
-                    val photoUrl = pub.photoReference?.let { ref ->
-                        "https://maps.googleapis.com/maps/api/place/photo" +
-                                "?maxwidth=400" +
-                                "&photo_reference=$ref" +
-                                "&key=${context.getString(R.string.google_maps_key)}"
-                    }
-                    Card( // Create a card for each pub
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onCheckInClick(pub.pubId ?: "") }
-                    ) {
-                        Column(Modifier.padding(16.dp)) {
-                            // Pub photo
-                            if (photoUrl != null) {
-                                AsyncImage(
-                                    model = photoUrl,
-                                    contentDescription = "Pub photo",
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(160.dp)
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                            }
-
-                            // Name from Google Places
-                            Text(
-                                pub.pubName,
-                                style = MaterialTheme.typography.titleMedium
-                            )
-
-                            Spacer(modifier = Modifier.height(4.dp))
-
-                            //Rating - distance - and status
-                            Text(
-                                text = "⭐ $ratingText • ${"%.1f".format(distanceKm)} km • $isOpenText",
-                                style = MaterialTheme.typography.bodySmall
-                            )
+                items(nearbyPubs) { pub -> // Iterate through nearby pubs
+                    PubPreviewCard( // Create a card for each pub
+                        pub = pub, // Set the pub
+                        userPosition = userPosition, // Set the user position
+                        googleMapsApiKey = apiKey, // Set the Google Maps API key
+                        modifier = Modifier.fillMaxWidth(), // Fill the max width
+                        showButton = false, // Don't show the button
+                        onCardClick = { // Handle the card click
+                            // Navigate to the check-in screen with the selected pub ID
+                            onCheckInClick(pub.pubId ?: "")
                         }
-                    }
+                    )
                 }
             }
         }
     }
-}
-
-private fun distanceInKm(from: LatLng, to: LatLng): Double {
-    val results = FloatArray(1)
-    Location.distanceBetween(
-        from.latitude, from.longitude,
-        to.latitude, to.longitude,
-        results
-    )
-    return results[0] / 1000.0
 }
