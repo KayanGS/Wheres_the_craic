@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -202,25 +201,6 @@ fun PubDetailsContent(
             Text(
                 selectedTags.joinToString(", "),
                 style = MaterialTheme.typography.bodySmall
-            )
-        }
-
-        if (checkedIn) { // If the user is checked in, show the check-in options
-            Spacer(modifier = Modifier.height(2.dp)) // Spacing between items
-            // Text for the check-in options
-            Text("Check-in options", style = MaterialTheme.typography.titleMedium)
-            TagsSelector( // Tags selector for extra tags
-                categories = TAGS_BY_CATEGORY, // All available tags
-                selected = selectedTags, // Selected tags
-                onToggle = { tag ->// Callback when a tag is toggled
-                    // If the tag is already selected, remove it; otherwise, add it
-                    val newSelected =
-                        if (tag in selectedTags) {
-                            selectedTags - tag
-                        } else selectedTags + tag
-
-                    onSelectedTagsChange(newSelected)
-                }
             )
         }
     }

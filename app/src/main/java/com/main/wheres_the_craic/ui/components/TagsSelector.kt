@@ -2,7 +2,8 @@ package com.main.wheres_the_craic.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.FilterChip
@@ -20,14 +21,13 @@ import androidx.compose.ui.unit.dp
  * @param selected The current selected tags.
  * @param onToggle Callback function when clicked will change the state of a tag
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TagsSelector(
     categories: Map<String, List<String>>,
     selected: Set<String>,
     onToggle: (String) -> Unit
 ) {
-    // Shows 3 chips per row
-    val chipsPerRow = 3
 
     Column(verticalArrangement = Arrangement.spacedBy(1.dp)) { // Spacing between rows
         categories.forEach { (title, tags) -> // Title and tags for each category#
@@ -37,19 +37,24 @@ fun TagsSelector(
 
             Text(title, style = MaterialTheme.typography.titleSmall)
 
-            tags.chunked(chipsPerRow).forEach { chunk ->
-                Row( // Row for each chunk
-                    // Spacing between chips
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth() // Fill the width
-                ) {
-                    chunk.forEach { tag -> // For each tag in the chunk
-                        FilterChip( // Chip for each tag
-                            selected = tag in selected, // Check if the tag is selected
-                            onClick = { onToggle(tag) }, // Callback when clicked
-                            label = { Text(tag) } // Display the tag
-                        )
-                    }
+            FlowRow( // Flow row to display tags
+                modifier = Modifier // Modifier for the row
+                    .fillMaxWidth() // Fill the width
+                    .padding(top = 4.dp), // Add top padding
+                horizontalArrangement = Arrangement.spacedBy(8.dp), // Spacing between items
+                verticalArrangement = Arrangement.spacedBy(8.dp) // Spacing between rows
+            ) {
+                tags.forEach { tag -> // For each tag in the chunk
+                    FilterChip( // Chip for each tag
+                        selected = tag in selected, // Check if the tag is selected
+                        onClick = { onToggle(tag) }, // Callback when clicked
+                        label = {
+                            Text(
+                                tag,
+                                style = MaterialTheme.typography.labelMedium
+                            ) // Display the tag
+                        }
+                    )
                 }
             }
         }

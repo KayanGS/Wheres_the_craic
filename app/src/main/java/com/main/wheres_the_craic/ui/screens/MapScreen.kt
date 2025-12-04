@@ -35,6 +35,7 @@ import com.main.wheres_the_craic.data.getPubCheckIn
 import com.main.wheres_the_craic.ui.components.PubPreviewCard
 import com.main.wheres_the_craic.ui.components.crowdCountToMarker
 import com.main.wheres_the_craic.ui.components.rememberCrowdMarkerIcons
+import com.main.wheres_the_craic.util.openGoogleMapsDirections
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -201,6 +202,16 @@ fun MapScreen(onPubSelected: (String) -> Unit = {}) {
                         onButtonClick = { // Handle the button click
                             // Navigate to the check-in screen with the selected pub ID
                             pub.pubId?.let { onPubSelected(it) }
+                        },
+                        showNavigateButton = true, // Show the navigate button
+                        onNavigateClick = { // Handle the navigate button click
+                            // Open Google Maps directions to the selected pub
+                            openGoogleMapsDirections(
+                                context = context,
+                                latitude = pub.pubLatitude,
+                                longitude = pub.pubLongitude,
+                                label = pub.pubName
+                            )
                         }
                     )
                 }

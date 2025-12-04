@@ -6,14 +6,17 @@ import android.content.Intent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
@@ -22,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,7 +50,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.main.wheres_the_craic.data.incrementPubCrowd
 import com.main.wheres_the_craic.ui.components.PubDetailsContent
-
+import com.main.wheres_the_craic.ui.components.TAGS_BY_CATEGORY
+import com.main.wheres_the_craic.ui.components.TagsSelector
 
 /**
  * A screen that displays the details of the pubs and also allows the user to check-in in the pub
@@ -73,6 +78,8 @@ fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
     // State for the selected tags
     var selectedTags by remember { mutableStateOf<Set<String>>(emptySet()) }
     val scope = rememberCoroutineScope() // Remember the coroutine scope
+    // Controls if the tag selection popup is visible
+    var showTagDialog by remember { mutableStateOf(false) }
 
     // Save the tags when the user checks in
     LaunchedEffect(selectedTags, checkedIn) { // Launch the effect
@@ -115,6 +122,7 @@ fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
 
                 if (checkInData != null) { // If check-in data is not null
                     selectedTags = checkInData.tags // Set the selected tags
+                    checkedIn = true // Mark as already checked in so user can't change tags again
                 }
             }
         } catch (e: Exception) { // If there is an error, show error message
@@ -154,18 +162,8 @@ fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
                 // Button
                 Button( // Button to check-in
                     onClick = { // When clicked get pub id and increment crowd
-                        checkedIn = true // Set checked in to true
-                        val id = pubId // Get the pub ID
-                        if (id != null) { // If the pub ID is not null
-                            scope.launch { // Launch a coroutine
-                                try { // Try to increment the crowd
-                                    incrementPubCrowd(id)
-                                } catch (e: Exception) { // If there is an error, show error message
-                                    println("Error incrementing crowd for pub $id: $e")
-                                    errorMessage = "Failed to increment crowd" // Error Message
-                                }
-                            }
-                        }
+                        // Instead of incrementing immediately, open the tag selection popup
+                        showTagDialog = true
                     }, // Check in when clicked
                     modifier = Modifier
                         .fillMaxWidth() // Fill the width
@@ -213,8 +211,115 @@ fun CheckInScreen(pubId: String?, onBack: () -> Unit) {
                     dialPhoneNumber = { phone -> dialPhoneNumber(context, phone) }
                 )
             }
+
+            // If already checked in, show an "Edit tags" button
+            if (checkedIn) {
+                Spacer(modifier = Modifier.height(12.dp)) // Apply height
+                Button( // Button to edit tags
+                    onClick = { showTagDialog = true }, // Open the tag selection popup
+                    modifier = Modifier // Modifier for the button
+                        .fillMaxWidth() // Fill the width
+                        .padding(horizontal = 16.dp) // Padding
+                ) {
+                    Text("Edit tags") // Button text
+                }
+            }
+        }
+        // Tag selection popup
+        if (showTagDialog) { // If the popup is visible
+            TagSelectionDialog( // Show the dialog
+                initialSelection = selectedTags, // Set the initial selection
+                onDismiss = { showTagDialog = false }, // Dismiss the dialog
+                onConfirm = { chosenTags -> // Handle the confirm button click
+                    val id = pubId // Get the pub ID
+                    selectedTags = chosenTags // Update the selected tags in state
+
+                    if (id != null) { // If the pub ID is not null
+                        if (!checkedIn) {
+                            // First-time check-in: increment crowd and mark as checked in
+                            scope.launch { // Launch a coroutine
+                                try { // Try to increment the crowd
+                                    incrementPubCrowd(id) // Increment the crowd
+                                    checkedIn = true // Mark as checked in
+                                } catch (e: Exception) { // If there is an error, show error message
+                                    println("Error incrementing crowd for pub $id: $e")
+                                    errorMessage = "Failed to increment crowd" // Error Message
+                                } finally { // Finally, hide the popup
+                                    showTagDialog = false // Hide the popup
+                                }
+                            }
+                        } else {
+                            // Editing tags only: just close the dialog (save happens via LaunchedEffect)
+                            showTagDialog = false
+                        }
+                    } else { // If the pub ID is null, hide the popup
+                        showTagDialog = false // Hide the popup
+                    }
+                }
+            )
         }
     }
+}
+
+/**
+ * Simple dialog that displays all tag categories and lets user pick or edit tags.
+ * @param initialSelection The initial selection of tags.
+ * @param onDismiss The callback function to dismiss the dialog.
+ * @param onConfirm The callback function to confirm the selection.
+ */
+@Composable
+private fun TagSelectionDialog(
+    initialSelection: Set<String>,
+    onDismiss: () -> Unit,
+    onConfirm: (Set<String>) -> Unit
+) {
+    // State for the selected tags
+    var tempSelection by remember { mutableStateOf(initialSelection) }
+
+    AlertDialog( // Alert dialog
+        onDismissRequest = onDismiss, // Dismiss the dialog when clicked outside
+        title = { // Title
+            Text( // Text for the title
+                "What’s the craic like?",
+                style = MaterialTheme.typography.titleMedium // Set to be medium
+            )
+        },
+        text = { // Selection text
+            Column( // Column to organize the content
+                modifier = Modifier // Modifier for the column
+                    .fillMaxWidth() // Fill the width
+                    .verticalScroll(rememberScrollState()) // Allow scrolling
+            ) {
+                Text( // Text for the selection
+                    text = "Pick a few tags to describe the vibe:", // Selection text
+                    style = MaterialTheme.typography.bodyMedium // Set to be medium
+                )
+
+                Spacer(modifier = Modifier.height(12.dp)) // Apply height
+
+                TagsSelector( // Selector for the tags
+                    categories = TAGS_BY_CATEGORY, // Set the categories
+                    selected = tempSelection, // Set the selected tags
+                    onToggle = { tag -> // Handle the toggle
+                        tempSelection = // Update the selection
+                            //If the tag is in the selection, remove it
+                            if (tag in tempSelection) tempSelection - tag // Remove the tag
+                            else tempSelection + tag // Add the tag
+                    }
+                )
+            }
+        },
+        confirmButton = { // Confirm button
+            TextButton(onClick = { onConfirm(tempSelection) }) { // Handle the click
+                Text("Save & Check-in") // Button text
+            }
+        },
+        dismissButton = { // Dismiss button
+            TextButton(onClick = onDismiss) { // Handle the click
+                Text("Cancel") // Button text
+            }
+        }
+    )
 }
 
 /**

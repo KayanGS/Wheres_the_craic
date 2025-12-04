@@ -27,6 +27,7 @@ import com.google.android.gms.location.LocationServices
 import com.main.wheres_the_craic.data.fetchNearbyPubs
 import com.main.wheres_the_craic.R
 import com.main.wheres_the_craic.ui.components.PubPreviewCard
+import com.main.wheres_the_craic.util.openGoogleMapsDirections
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -141,6 +142,16 @@ fun PubsListScreen(onCheckInClick: (String) -> Unit) {
                         onCardClick = { // Handle the card click
                             // Navigate to the check-in screen with the selected pub ID
                             onCheckInClick(pub.pubId ?: "")
+                        },
+                        showNavigateButton = true, // Show the navigate button
+                        onNavigateClick = { // Handle the navigate button click
+                            // Open Google Maps directions to the selected pub
+                            openGoogleMapsDirections(
+                                context = context,
+                                latitude = pub.pubLatitude,
+                                longitude = pub.pubLongitude,
+                                label = pub.pubName
+                            )
                         }
                     )
                 }

@@ -71,6 +71,8 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.3.0"))
     implementation("com.google.firebase:firebase-firestore-ktx")
     implementation(libs.androidx.compose.runtime)
+    implementation("androidx.compose.material:material-icons-extended:1.7.5")
+    implementation(libs.androidx.compose.foundation.layout)
 //    implementation(libs.places)
 
     testImplementation(libs.junit)
