@@ -30,9 +30,9 @@ fun AppNavigation(navController: NavHostController) {
         // ############### MAP SCREEN ###############
         composable(Routes.MAP_SCREEN) {
             MapScreen(
-                onPubSelected = { pubId: String? -> // Handle pub selection
-                    // Navigate to the pubs list screen with the selected pub ID
-                    navController.navigate(Routes.PUBS_LIST_SCREEN)
+                onPubSelected = { pubId -> // Handle pub selection
+                    // Navigate to the check-in screen with the selected pub ID
+                    navController.navigate("${Routes.CHECK_IN_SCREEN}/$pubId")
                 }
             )
         }
